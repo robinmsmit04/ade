@@ -50,4 +50,4 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Schone lockfile-installatie, typecheck, lint, 7 unit-tests en productiebuild geslaagd.
 - Alle 8 browsercontroles ook tegen `next start` (productiemodus) geslaagd.
 - 12 integratietests geslaagd; daadwerkelijke realtime en accountverwijdering zijn afzonderlijk gecontroleerd.
-- Code wordt vastgelegd op `main`; de remote push wordt afzonderlijk gecontroleerd en is pas bevestigd na een geslaagde Git-respons.
+- Implementatiecommit `d7496ce` is succesvol naar `origin/main` gepusht; Git bevestigde het aanmaken van de remote branch. De documentatie wordt in een opvolgcommit bijgewerkt.
