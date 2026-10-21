@@ -1,64 +1,13 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- local photo preview */
 import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, ArrowRight } from "lucide-react";
+import { Camera, ImagePlus, ArrowRight, FlipHorizontal2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CameraCapture } from "@/components/camera-capture";
+import { prepareImage } from "@/lib/prepare-image";
 import { Avatar } from "@/components/avatar";
 import { getSupabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/domain";
-async function preparePhoto(file: File) {
-  if (file.size > 10 * 1024 * 1024)
-    throw new Error("Kies een foto van maximaal 10 MB.");
-  if (
-    ![
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/heic",
-      "image/heif",
-    ].includes(file.type)
-  )
-    throw new Error(
-      "Kies een foto in JPG, PNG, WebP of een ondersteund iPhone-formaat.",
-    );
-  const url = URL.createObjectURL(file);
-  try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Je browser kan deze foto niet verwerken.");
-    const side = Math.min(image.naturalWidth, image.naturalHeight);
-    context.drawImage(
-      image,
-      (image.naturalWidth - side) / 2,
-      (image.naturalHeight - side) / 2,
-      side,
-      side,
-      0,
-      0,
-      512,
-      512,
-    );
-    return await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-        (blob) =>
-          blob ? resolve(blob) : reject(new Error("Foto verwerken mislukt.")),
-        "image/jpeg",
-        0.85,
-      ),
-    );
-  } catch {
-    throw new Error(
-      "Deze foto kon niet worden geopend. Probeer een JPG- of PNG-bestand.",
-    );
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 export function ProfileSetup({
   profile,
   onSaved,
@@ -79,6 +28,9 @@ export function ProfileSetup({
   const [error, setError] = useState("");
   const lock = useRef(false);
   const selection = useRef(0);
+  const source = useRef<File | null>(null);
+  const [flipped, setFlipped] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   useEffect(() => {
     if (!photo) return;
     const url = URL.createObjectURL(photo.blob);
@@ -86,14 +38,21 @@ export function ProfileSetup({
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [photo]);
-  async function pick(file?: File) {
+  async function pick(file?: File, flip = false) {
     if (!file) return;
     const current = ++selection.current;
     setProcessing(true);
     setError("");
     try {
-      const blob = await preparePhoto(file);
+      const blob = await prepareImage(file, {
+        maxEdge: 512,
+        square: true,
+        flip,
+        maxBytes: 10 * 1024 * 1024,
+      });
       if (current === selection.current) {
+        source.current = file;
+        setFlipped(flip);
         setPhoto({ blob, path: `${profile.id}/${crypto.randomUUID()}.jpg` });
         setRemove(false);
       }
@@ -104,6 +63,16 @@ export function ProfileSetup({
       if (current === selection.current) setProcessing(false);
     }
   }
+  if (cameraOpen)
+    return (
+      <CameraCapture
+        captured={(file) => {
+          setCameraOpen(false);
+          void pick(file);
+        }}
+        close={() => setCameraOpen(false)}
+      />
+    );
   return (
     <form
       className="stack profile-setup"
@@ -170,6 +139,16 @@ export function ProfileSetup({
           />
         )}
       </div>
+      <Button
+        type="button"
+        variant="secondary"
+        aria-label="Profielfotocamera openen"
+        disabled={busy || processing}
+        onClick={() => setCameraOpen(true)}
+      >
+        <Camera size={18} />
+        Camera openen
+      </Button>
       <div className="photo-actions">
         <label className="photo-picker">
           <ImagePlus size={18} />
@@ -184,7 +163,7 @@ export function ProfileSetup({
         </label>
         <label className="photo-picker">
           <Camera size={18} />
-          Maak foto
+          Systeemcamera
           <input
             type="file"
             accept="image/*"
@@ -195,6 +174,20 @@ export function ProfileSetup({
           />
         </label>
       </div>
+      {photo && (
+        <Button
+          type="button"
+          variant="ghost"
+          aria-pressed={flipped}
+          disabled={busy || processing}
+          onClick={() => {
+            if (source.current) void pick(source.current, !flipped);
+          }}
+        >
+          <FlipHorizontal2 size={18} />
+          Spiegelen corrigeren
+        </Button>
+      )}
       {processing && (
         <p role="status" className="muted text-sm">
           Foto klaarmaken…

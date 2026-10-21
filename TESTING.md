@@ -8,10 +8,10 @@ Uitgevoerd op 21 oktober 2026 in deze cloudomgeving, met Node 24, PostgreSQL 17 
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | TypeScript `npm run typecheck`               | Geslaagd                                                                                                        |
 | ESLint `npm run lint`                        | Geslaagd, zonder meldingen                                                                                      |
-| Vitest unit                                  | 7 tests geslaagd                                                                                                |
+| Vitest unit                                  | 9 tests geslaagd                                                                                                |
 | Vitest Supabase-integratie                   | 42 tests geslaagd                                                                                               |
-| Playwright Chromium desktop                  | 9 tests geslaagd                                                                                                |
-| Playwright mobiel Chromium                   | 9 tests geslaagd, in productiemodus; Pixel 7 en 390 × 844                                                       |
+| Playwright Chromium desktop                  | 10 tests geslaagd                                                                                               |
+| Playwright mobiel Chromium                   | 10 tests geslaagd, in productiemodus; Pixel 7 en 390 × 844                                                      |
 | Productiebuild Next.js                       | Geslaagd, ook na een schone npm ci                                                                              |
 | `npm audit --omit=dev --audit-level=high`    | 0 kwetsbaarheden gemeld                                                                                         |
 | Kleine lokale stack opnieuw starten          | Geslaagd; migratieledger voorkomt dubbel toepassen                                                              |
@@ -106,3 +106,13 @@ De Chromium-suite bevat 18 cases (9 desktop, 9 mobiel) tegen de productiebuild. 
 Het album wordt fullscreen geopend, Back sluit de viewer, swipen wisselt tussen video/foto en de vorige-knop werkt. Browser Back herstelt Feed en scrollpositie. De mobiele case gebruikt 390×844 en touch, met reduced-motion. De bestaande onboardingcase test aanvullend Feest afronden, een reload met eindstatus zonder teller, ongewijzigde Tijdlijn en een nieuw feest met leeg Home en een nieuwe registratie. De overige 16 browsercases behouden loginherstel, PWA, onboarding, privacy, offline-recordretry en challenge-review/leaderboard/album.
 
 De screenshots onder `test-results` zijn bekeken op mobiele layout en blijven genegeerd. Geen fysieke camera- of iPhone Safari-test; WebKit is hier niet beschikbaar door de eerder vastgestelde geblokkeerde browserdownload. MP4/MOV-opslagautorisatie blijft gedekt door bestaande mediatests; daadwerkelijke iPhone-codecs/decodering vereisen nog een toestel. Hosted SQL, mailbezorging, Vercel-readiness en publieke eindtests zijn niet uitgevoerd zonder externe accounttoegang. De lokale resultaten zijn geen productieclaim.
+
+## Camera, uploadretry en registratieranglijst
+
+Twee aanvullende unit-tests toetsen aflopende aantallen, gelijke rangposities, exacte labels zonder MDMA/XTC-normalisatie en afwezige/lege resultaten. De unit-suite bevat nu negen tests.
+
+Een nieuwe desktop-/mobiele browsercase gebruikt een deterministische synthetische camerastream met links rood en rechts blauw. De test wisselt camera, controleert dat de video geen spiegeltransformatie heeft, legt een foto vast, corrigeert de spiegeling en zet die terug. Pixelmetingen aan zowel preview als de werkelijk via Storage gedownloade JPEG bewijzen behoud van de richting. Een gesimuleerde RPC-fout ná een echte upload laat het bestand privé; de retry hergebruikt het object met een echte duplicate-response en maakt precies één submission. De concrete serverfout staat in de sheet en selectie/toestemming blijven staan.
+
+Dezelfde case vergelijkt twee gebruikers met twee en drie registratiemomenten. Een privédeelnemer staat niet in de lijst. Expliciet delen toont de juiste aflopende volgorde; het exacte SOS-filter en opnieuw intrekken werken. Beide formaten controleren horizontale overflow. De bestaande achttien browsercases controleren ook de aangepaste JPEG-bewijsroute en profielfotobewerking. De volledige suite bevat twintig browsercases tegen de lokale productiebuild. Camerastreams zijn testfixtures, geen echte fysieke cameraverificatie. HEIC-decodering op een fysiek iPhone en de oorzaak van de door de gebruiker gemelde hosted uploadfout zijn niet zelfstandig bevestigd.
+
+Eindcontrole van deze wijziging: 9 unit-tests, 20 desktop-/mobiele Chromium-cases tegen productiemodus, TypeScript, lint en productiebuild geslaagd. De camera toont eerst het livebeeld en pas na vastleggen de challengekeuze. De bibliotheek-/vervangopties klappen na een selectie in zodat preview en bevestiging voorrang krijgen. Een al ingezonden eenmalige challenge biedt een link naar de bestaande inzending.

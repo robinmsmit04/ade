@@ -36,6 +36,8 @@ import { MediaAlbum } from "@/components/social/album";
 import { Notifications } from "@/components/social/notifications";
 import { useSocial } from "@/components/social/use-social";
 import { useNavigation } from "@/lib/use-navigation";
+import { RecordRanking } from "@/components/record-ranking";
+import { storeEvidence } from "@/lib/store-evidence";
 import { EvidenceUpload } from "@/components/evidence-upload";
 import { Avatar } from "@/components/avatar";
 import { Dialog as Modal } from "@/components/dialog";
@@ -52,7 +54,6 @@ import {
   elapsed,
   formatDate,
   recordSchema,
-  validateMedia,
   type CrewSummary,
   type Challenge,
   type Checkin,
@@ -140,6 +141,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const [timelineDay, setTimelineDay] = useState("");
   const [timelineLabel, setTimelineLabel] = useState("");
   const [crewDay, setCrewDay] = useState("");
+  const [crewView, setCrewView] = useState<"members" | "ranking">("members");
   const [inviteLink, setInviteLink] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [boot, setBoot] = useState(configured);
@@ -164,6 +166,9 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const [recordOpen, setRecordOpen] = useState(false);
   const [editing, setEditing] = useState<RecordEntry | null>(null);
   const [selected, setSelected] = useState<Challenge | null>(null);
+  const [homeCameraOpen, setHomeCameraOpen] = useState(false);
+  const [homeCameraLive, setHomeCameraLive] = useState(false);
+  const [photoChallenge, setPhotoChallenge] = useState("");
   const [editingChallenge, setEditingChallenge] = useState<
     Challenge | null | undefined
   >(undefined);
@@ -225,6 +230,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         setPartyDialog(null);
         setRecordOpen(false);
         setSelected(null);
+        setHomeCameraOpen(false);
         navigate("live");
         setError("");
         setNotice("");
@@ -247,14 +253,20 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     };
   }, []);
   useEffect(() => {
-    if (!recordOpen && !selected && editingChallenge === undefined) return;
+    if (
+      !recordOpen &&
+      !selected &&
+      !homeCameraOpen &&
+      editingChallenge === undefined
+    )
+      return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [recordOpen, selected, editingChallenge]);
+  }, [recordOpen, selected, homeCameraOpen, editingChallenge]);
   const loadCrews = useCallback(async () => {
     if (!uid) return;
     const client = getSupabase();
@@ -516,6 +528,31 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     if (error) throw error;
     return data;
   }
+  async function uploadEvidence(
+    challenge: string,
+    file: File,
+    id: string,
+    path: string,
+  ) {
+    let saved = false;
+    let failure: unknown;
+    await run(async () => {
+      try {
+        await storeEvidence(getSupabase(), { cid, challenge, file, id, path });
+        saved = true;
+        setSelected(null);
+        setHomeCameraOpen(false);
+        social.setFocusedId(id);
+        go("feed");
+        await social.refresh();
+      } catch (e) {
+        failure = e;
+        throw e;
+      }
+    }, "Bewijs ingezonden.");
+    if (failure) throw failure;
+    return saved;
+  }
   function go(t: Tab) {
     navigate(t);
     setProfileMenu(false);
@@ -542,6 +579,17 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     setEditing(null);
     setRecordOpen(true);
   }
+  const photoChallenges = challenges.filter(
+    (c) =>
+      c.active &&
+      (c.repeatable ||
+        !submissions.some(
+          (s) =>
+            s.challenge_id === c.id &&
+            s.user_id === uid &&
+            s.status !== "rejected",
+        )),
+  );
   const myRecords = records.filter((r) => r.user_id === uid);
   const lastPersonal = partyLatest
     ? {
@@ -856,16 +904,36 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   Historische informatie · geen advies over (her)gebruik
                 </p>
               </div>
-              <Button
-                className="home-register"
-                onClick={() =>
-                  partyEnded ? setPartyDialog("start") : newRecord()
-                }
-                disabled={configured && (!cid || loading)}
-              >
-                <Plus size={22} />
-                {partyEnded ? "Nieuw feest starten" : "Nieuwe registratie"}
-              </Button>
+              <div className="home-primary-actions">
+                <Button
+                  className="home-register"
+                  onClick={() =>
+                    partyEnded ? setPartyDialog("start") : newRecord()
+                  }
+                  disabled={configured && (!cid || loading)}
+                >
+                  <Plus size={22} />
+                  {partyEnded ? "Nieuw feest starten" : "Nieuwe registratie"}
+                </Button>
+                <Button
+                  className="home-camera"
+                  variant="secondary"
+                  aria-label="Foto maken"
+                  disabled={!uid || !cid || loading}
+                  onClick={() => {
+                    setPhotoChallenge(
+                      photoChallenges.find((c) => c.title === "Crew in beeld")
+                        ?.id ||
+                        photoChallenges[0]?.id ||
+                        "",
+                    );
+                    setHomeCameraLive(true);
+                    setHomeCameraOpen(true);
+                  }}
+                >
+                  <Camera size={25} />
+                </Button>
+              </div>
               {!partyEnded && uid && (
                 <button
                   className="party-end-action"
@@ -927,6 +995,26 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                 Je ziet alleen wat iemand zelf met deze crew deelt. Geen
                 gedeelde gegevens betekent dat we ook geen aantallen tonen.
               </p>
+              <div
+                className="crew-view-tabs"
+                role="tablist"
+                aria-label="Crewweergave"
+              >
+                <button
+                  role="tab"
+                  aria-selected={crewView === "members"}
+                  onClick={() => setCrewView("members")}
+                >
+                  Leden
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={crewView === "ranking"}
+                  onClick={() => setCrewView("ranking")}
+                >
+                  Ranglijst registratiemomenten
+                </button>
+              </div>
               <label className="max-w-64">
                 Festivaldag
                 <input
@@ -944,49 +1032,29 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   Alle dagen
                 </Button>
               )}
-              <CrewOverview
-                dayLabel={crewDay ? "op deze dag" : "vandaag"}
-                members={members}
-                profiles={profiles}
-                summaries={summaries}
-                parties={parties}
-                uid={uid}
-                open={(id) => {
-                  if (id === uid) {
-                    go("timeline");
-                    return;
-                  }
-                  setFriend(id);
-                  setTimelineDay(crewDay);
-                  setTimelineLabel("");
-                  go("friend");
-                }}
-              />
-              <details className="neutral-stats">
-                <summary>Registratiemomenten naast elkaar</summary>
-                <p className="muted text-xs mt-3 mb-3">
-                  Neutrale aantallen per eigen label. Alfabetisch op naam,
-                  zonder ranglijst, punten of gebruiksadvies.
-                </p>
-                {[...summaries]
-                  .sort((a, b) =>
-                    name(a.user_id).localeCompare(name(b.user_id), "nl"),
-                  )
-                  .map((s) => (
-                    <div className="stats-person" key={s.user_id}>
-                      <strong>{name(s.user_id)}</strong>
-                      <div>
-                        {Object.entries(s.substance_counts).map(
-                          ([label, count]) => (
-                            <span key={label}>
-                              {label} <b>{count}</b>
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </details>
+              {crewView === "members" && (
+                <CrewOverview
+                  dayLabel={crewDay ? "op deze dag" : "vandaag"}
+                  members={members}
+                  profiles={profiles}
+                  summaries={summaries}
+                  parties={parties}
+                  uid={uid}
+                  open={(id) => {
+                    if (id === uid) {
+                      go("timeline");
+                      return;
+                    }
+                    setFriend(id);
+                    setTimelineDay(crewDay);
+                    setTimelineLabel("");
+                    go("friend");
+                  }}
+                />
+              )}
+              {crewView === "ranking" && (
+                <RecordRanking summaries={summaries} profiles={profiles} />
+              )}
             </section>
           )}
           {tab === "crews" && (
@@ -2020,6 +2088,57 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
           }}
         />
       )}
+      {homeCameraOpen && (
+        <Modal title="Foto maken" close={() => setHomeCameraOpen(false)}>
+          <div className="stack">
+            {photoChallenges.length ? (
+              <>
+                {!homeCameraLive && (
+                  <>
+                    {" "}
+                    <label>
+                      Fotochallenge
+                      <select
+                        value={photoChallenge}
+                        disabled={busy}
+                        onChange={(e) => setPhotoChallenge(e.target.value)}
+                      >
+                        {photoChallenges.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="notice text-sm">
+                      {
+                        photoChallenges.find((c) => c.id === photoChallenge)
+                          ?.evidence
+                      }
+                    </p>
+                  </>
+                )}
+                <EvidenceUpload
+                  startCamera
+                  onCameraChange={setHomeCameraLive}
+                  busy={busy}
+                  cid={cid}
+                  uid={uid}
+                  upload={(file, id, path) =>
+                    uploadEvidence(photoChallenge, file, id, path)
+                  }
+                />
+              </>
+            ) : (
+              <p className="notice">
+                Je hebt alle beschikbare fotochallenges al ingezonden. Kies een
+                herhaalbare challenge of vraag je crewbeheerder om een nieuwe
+                fotochallenge.
+              </p>
+            )}
+          </div>
+        </Modal>
+      )}
       {selected && (
         <Modal title={selected.title} close={() => setSelected(null)}>
           <div className="stack">
@@ -2033,43 +2152,49 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             </div>
             <p className="text-xs muted">
               {selected.repeatable ? "Herhaalbaar" : "Eenmaal per persoon"} ·
-              Maximaal 25 MB · JPG, PNG, WebP, MP4, MOV of WebM. Upload
-              uitsluitend met toestemming van iedereen in beeld. Je crew kan het
-              bewijs na inzenden bekijken.
+              Maximaal 25 MB · Foto’s worden als JPEG verwerkt; video: MP4, MOV
+              of WebM. Upload uitsluitend met toestemming van iedereen in beeld.
+              Je crew kan het bewijs na inzenden bekijken.
             </p>
-            <EvidenceUpload
-              busy={busy}
-              upload={async (file, id, path) => {
-                let ok = false;
-                await run(async () => {
-                  validateMedia(file);
-                  const client = getSupabase();
-                  const { error } = await client.storage
-                    .from("crew-evidence")
-                    .upload(path, file, {
-                      contentType: file.type,
-                      upsert: false,
-                    });
-                  if (error && error.message !== "The resource already exists")
-                    throw error;
-                  await rpc("submit_evidence", {
-                    cid,
-                    challenge: selected.id,
-                    path,
-                    mime: file.type,
-                    request_id: id,
-                  });
-                  ok = true;
-                  setSelected(null);
-                  social.setFocusedId(id);
-                  go("feed");
-                  await social.refresh();
-                }, "Bewijs ingezonden.");
-                return ok;
-              }}
-              cid={cid}
-              uid={uid}
-            />
+            {!selected.repeatable &&
+            submissions.some(
+              (s) =>
+                s.challenge_id === selected.id &&
+                s.user_id === uid &&
+                s.status !== "rejected",
+            ) ? (
+              <div className="stack">
+                <p className="notice">
+                  Je hebt deze eenmalige challenge al ingezonden. Je kunt die
+                  inzending terugvinden in de Feed. Kies een andere of
+                  herhaalbare challenge voor een nieuwe foto.
+                </p>
+                <Button
+                  onClick={() => {
+                    const own = submissions.find(
+                      (s) =>
+                        s.challenge_id === selected.id &&
+                        s.user_id === uid &&
+                        s.status !== "rejected",
+                    );
+                    if (own) social.setFocusedId(own.id);
+                    setSelected(null);
+                    go("feed");
+                  }}
+                >
+                  Bekijk mijn inzending
+                </Button>
+              </div>
+            ) : (
+              <EvidenceUpload
+                busy={busy}
+                upload={(file, id, path) =>
+                  uploadEvidence(selected.id, file, id, path)
+                }
+                cid={cid}
+                uid={uid}
+              />
+            )}
           </div>
         </Modal>
       )}
