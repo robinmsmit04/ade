@@ -218,7 +218,13 @@ test("official seven-player lineup, exclusive manager, player privacy and live l
     );
     // Real upload, submission and two other reviewers produce real challenge points and a photo.
     const challenge = await ok(
-      cs[2].from("challenges").select("*").eq("crew_id", cid).limit(1).single(),
+      cs[2]
+        .from("challenges")
+        .select("*")
+        .eq("crew_id", cid)
+        .eq("active", true)
+        .limit(1)
+        .single(),
     );
     const sid = crypto.randomUUID(),
       path = `${cid}/${ids[2]}/${sid}.png`;

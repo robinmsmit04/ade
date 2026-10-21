@@ -111,8 +111,8 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       ).toBeVisible({ timeout: 20000 });
     }
     await nav(a, "Challenges");
-    await a.getByRole("button", { name: /Crew in beeld/ }).click();
-    let dialog = a.getByRole("dialog", { name: "Crew in beeld" });
+    await a.getByRole("button", { name: /De dubbelganger/ }).click();
+    let dialog = a.getByRole("dialog", { name: "De dubbelganger" });
     await dialog.getByLabel("Foto of video").setInputFiles({
       name: "crew.png",
       mimeType: "image/png",
@@ -148,13 +148,13 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       p
         .locator(".submission-card")
         .filter({
-          has: p.getByRole("heading", { name: "Crew in beeld", exact: true }),
+          has: p.getByRole("heading", { name: "De dubbelganger", exact: true }),
         })
         .filter({ hasText: name });
     for (const p of [b, c]) {
       await expect(card(p)).toBeVisible({ timeout: 10000 });
       await expect(
-        card(p).getByRole("img", { name: "Bewijs: Crew in beeld" }),
+        card(p).getByRole("img", { name: "Bewijs: De dubbelganger" }),
       ).toBeVisible();
     }
     await expect(
@@ -176,10 +176,12 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       .selectOption((await cs[0].auth.getUser()).data.user!.id);
     await expect(b.locator(".album-grid .album-item")).toHaveCount(1);
     await b
-      .getByRole("button", { name: "Open media: Crew in beeld", exact: true })
+      .getByRole("button", { name: "Open media: De dubbelganger", exact: true })
       .click();
     await expect(
-      b.getByRole("dialog").getByRole("img", { name: "Bewijs: Crew in beeld" }),
+      b
+        .getByRole("dialog")
+        .getByRole("img", { name: "Bewijs: De dubbelganger" }),
     ).toBeVisible();
     await b.goBack();
     await expect(b.getByRole("dialog")).toHaveCount(0);
@@ -187,7 +189,7 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       b.getByRole("heading", { name: /Wall of Shame/ }),
     ).toBeVisible();
     await b
-      .getByRole("button", { name: "Open media: Crew in beeld", exact: true })
+      .getByRole("button", { name: "Open media: De dubbelganger", exact: true })
       .click();
     await b
       .getByRole("dialog")
@@ -251,7 +253,7 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
     await expect(
       a
         .locator("article")
-        .getByRole("heading", { name: "Crew in beeld", exact: true }),
+        .getByRole("heading", { name: "De dubbelganger", exact: true }),
     ).toBeVisible();
     // A real playable WebM exercises preview, private upload, feed and playback.
     await nav(a, "Challenges");
@@ -311,7 +313,9 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
         );
       });
     await expect(
-      b.getByRole("dialog").getByRole("img", { name: "Bewijs: Crew in beeld" }),
+      b
+        .getByRole("dialog")
+        .getByRole("img", { name: "Bewijs: De dubbelganger" }),
     ).toBeVisible();
     await b.getByRole("button", { name: "Vorig moment", exact: true }).click();
     await expect(b.getByRole("dialog").locator("video")).toBeVisible();

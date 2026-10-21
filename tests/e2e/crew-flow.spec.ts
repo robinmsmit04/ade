@@ -97,9 +97,9 @@ test("same public URL: automatic entry, private record, explicit sharing, realti
     await contexts[1].setOffline(false);
     await dialog.getByRole("button", { name: "Registratie opslaan" }).click();
     await expect(dialog).not.toBeVisible();
-    await expect(b.getByRole("status")).toContainText(
-      "Registratie opgeslagen.",
-    );
+    await expect(
+      b.getByRole("status").filter({ hasText: "Registratie opgeslagen." }),
+    ).toBeVisible();
     await expect(
       a.locator(".crew-list").getByText(recordName, { exact: false }),
     ).toHaveCount(0);
@@ -248,8 +248,8 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
     }
     const [reviewer, author, reviewer2] = pages;
     await openTab(author, "Challenges");
-    await author.getByRole("button", { name: /Crew in beeld/ }).click();
-    const dialog = author.getByRole("dialog", { name: "Crew in beeld" });
+    await author.getByRole("button", { name: /De dubbelganger/ }).click();
+    const dialog = author.getByRole("dialog", { name: "De dubbelganger" });
     await dialog.getByLabel("Foto of video").setInputFiles({
       name: "test.png",
       mimeType: "image/png",
@@ -268,12 +268,12 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
       const submission = p
         .locator(".card")
         .filter({
-          has: p.getByRole("heading", { name: "Crew in beeld", exact: true }),
+          has: p.getByRole("heading", { name: "De dubbelganger", exact: true }),
         })
         .filter({ hasText: authorName });
       await expect(submission).toBeVisible({ timeout: 10000 });
       await expect(
-        submission.getByRole("img", { name: "Bewijs: Crew in beeld" }),
+        submission.getByRole("img", { name: "Bewijs: De dubbelganger" }),
       ).toBeVisible();
       await submission
         .getByRole("button", { name: "Goedkeuren", exact: true })
@@ -297,10 +297,10 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
     await openTab(author, "Wall of Shame");
     const gallery = author.locator("article").filter({ hasText: authorName });
     await expect(
-      gallery.getByRole("heading", { name: "Crew in beeld", exact: true }),
+      gallery.getByRole("heading", { name: "De dubbelganger", exact: true }),
     ).toBeVisible();
     await expect(
-      gallery.getByRole("img", { name: "Bewijs: Crew in beeld" }),
+      gallery.getByRole("img", { name: "Bewijs: De dubbelganger" }),
     ).toBeVisible();
     await author.screenshot({
       path: testInfo.outputPath("wall.png"),

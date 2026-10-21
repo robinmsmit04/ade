@@ -10,7 +10,6 @@ De interactieve **3-0-3-opstelling met keeper** staat op Home: zeven accountgeko
 
 Ontbreekt **Opstelling beheren**? Volg de [herstelstappen](docs/ADE-SELECTIE.md#geen-beheerknop-en-nieuwe-accounts-zonder-naamfoto) en het [dashboardherstelbestand](docs/herstel-opstellingsbeheer.sql). Vrienden kunnen naam en foto later aanpassen via **Mijn profiel → Naam en foto aanpassen**. Een bevestigd account is ook zonder afgerond profiel of foto selecteerbaar.
 
-
 ## Starten
 
 Node.js 22 of hoger (in deze omgeving: Node 24), npm en een Supabase-project met de migraties uit `supabase/migrations`.
@@ -31,7 +30,7 @@ Lees [SETUP.md](SETUP.md) voor database, e-mailbevestiging, lokale integratietes
 ## Gebruik
 
 1. Registreer een account en bevestig de e-mail (bij hosted Supabase).
-2. Nieuwe accounts vullen een naam in en kunnen optioneel een profielfoto uploaden of maken. Daarna kom je automatisch in de gezamenlijke ADE Selectie-groep, zonder keuzescherm of uitnodiging. Bestaande accounts slaan onboarding over. De gezamenlijke omgeving bevat 20 challenges, verdeeld over DGTL en KI/KI.
+2. Nieuwe accounts vullen een naam in en kunnen optioneel een profielfoto uploaden of maken. Daarna kom je automatisch in de gezamenlijke ADE Selectie-groep, zonder keuzescherm of uitnodiging. Bestaande accounts slaan onboarding over. De gezamenlijke omgeving bevat 13 ADE-challenges: zeven Makkelijk (10 punten), drie Medium (30 punten) en drie Bijna onmogelijk (100 punten).
 3. Home toont je laatste historische registratie en de grote knop **Nieuwe registratie**. Kies een label en bevestig; hoeveelheid en opmerking zijn optioneel. **Tijdlijn** biedt dag- en middelfilters, corrigeren en verwijderen. **Crew** toont uitsluitend toegestane gedeelde gegevens. Onder **Ranglijst registratiemomenten** staan de aantallen aflopend, met festivaldag- en labelfilter; registraties leveren geen punten op.
 4. De cameraknop naast Nieuwe registratie opent de camera. Leg een foto vast, controleer de preview en koppel hem aan een beschikbare challenge. Nieuwe camerafoto’s krijgen geen automatische spiegeling; **Spiegelen corrigeren** kan een al gespiegeld bestand herstellen. Camera en bibliotheek zijn ook bij challengebewijs en profielfoto beschikbaar.
 5. Rond je avond af via **Feest afronden** op Home. De teller verdwijnt en je historie blijft intact. **Nieuw feest starten** begint een leeg persoonlijk registratieblok; het sluit niets voor anderen af en zegt niets over effecten of veiligheid.
@@ -63,3 +62,5 @@ npm run test:e2e         # vereist geïnstalleerde Playwright-browsers
 ```
 
 [ARCHITECTURE.md](ARCHITECTURE.md) beschrijft de beveiliging en [TESTING.md](TESTING.md) de werkelijk uitgevoerde controles. [PROGRESS.md](PROGRESS.md) houdt voortgang en externe vervolgstappen bij. Productiepublicatie vereist een eigen Supabase-project en Vercel-account; de lokale teststack is geen productieomgeving.
+
+Voor de nieuwe officiële challengelijst in een bestaande database: voer het hele bestand [docs/enable-ade-challenges.sql](docs/enable-ade-challenges.sql) uit in Supabase SQL Editor. Geen UUID of credentials invullen. Oude challenges worden gearchiveerd; bestaande inzendingen en punten blijven bewaard. De upgrade is herhaalbaar en raakt bestaande privécrews niet.

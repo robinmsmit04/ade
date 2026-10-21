@@ -11,12 +11,12 @@
 
 1. Maak een project aan. Bewaar het databasewachtwoord buiten deze repository.
 2. Koppel de CLI (`supabase login`, `supabase link --project-ref <jouw-ref>`) en voer `supabase db push` uit. Of voer de SQL-bestanden in `supabase/migrations` in volgorde uit in de SQL Editor, als projectbeheerder.
-3. De migraties maken tabellen, constraints, RLS, helper/RPC-functies, een gebruikersprofieltrigger, realtimepublicatie, 20 challengetemplates en de private buckets `crew-evidence` en `profile-photos` aan. Voer ze niet tweemaal handmatig uit. De CLI houdt migratieversies bij.
+3. De migraties maken tabellen, constraints, RLS, helper/RPC-functies, een gebruikersprofieltrigger, realtimepublicatie, 13 ADE-challengetemplates en de private buckets `crew-evidence` en `profile-photos` aan. Voer ze niet tweemaal handmatig uit. De CLI houdt migratieversies bij.
 4. Controleer dat alle applicatietabellen RLS gebruiken en beide buckets **private** zijn. Laat `activity` in `supabase_realtime`; publiceer geen gevoelige registratietabellen.
 5. Auth → URL Configuration: stel Site URL in op je productie-URL. Voeg `https://<jouw-domein>/auth/callback` en lokale ontwikkel-URL's toe als toegestane redirects. Voor uitnodigingen na e-mailbevestiging is ook `https://<jouw-domein>/auth/callback?next=/invite/**` nodig (of het ondersteunde globpatroon `https://<jouw-domein>/auth/**`). Sta uitsluitend eigen domeinen toe.
 6. Laat e-mailbevestiging in productie aan. Configureer een eigen SMTP-provider, afzender, afleverbaarheid, rate limits in Supabase. De lokale tests gebruiken uitsluitend auto-confirmatie in een afgeschermde wegwerpomgeving.
 7. Kopieer de publieke URL en publishable key (legacy `anon` mag ook) naar `.env.local`, overeenkomstig `.env.example`. Dit zijn publieke clientinstellingen, **geen service-role key**. Een service-role key is nergens nodig voor de applicatie.
-8. Start `npm run dev`. Registreer twee accounts en bevestig de e-mail. Nieuwe accounts vullen een naam in, kunnen een foto toevoegen en komen direct in de gezamenlijke groep. Bestaande bevestigde accounts van vóór V2 slaan onboarding over. De gezamenlijke omgeving bevat de twintig challenges.
+8. Start `npm run dev`. Registreer twee accounts en bevestig de e-mail. Nieuwe accounts vullen een naam in, kunnen een foto toevoegen en komen direct in de gezamenlijke groep. Bestaande bevestigde accounts van vóór V2 slaan onboarding over. De gezamenlijke omgeving bevat de 13 ADE-challenges.
 
 ## 3. Vercel
 
@@ -137,3 +137,9 @@ De volledige dashboardhandleiding staat in [docs/DOMEIN-EN-LIVEGANG.md](docs/DOM
 ## ADE Selectie: officiële opstelling en kleedkamer
 
 Voor bestaande databases met 001 t/m 006: voer het volledige [docs/enable-ade-selection.sql](docs/enable-ade-selection.sql) eenmalig uit in **Supabase → SQL Editor → New query → Run**. Verwacht **ADE Selectie ingesteld**. Geen extra omgevingsvariabelen of Storage-buckets nodig. Zie [docs/ADE-SELECTIE.md](docs/ADE-SELECTIE.md) voor het expliciet aanwijzen van jouw account als exclusieve opstellingsbeheerder, spelers koppelen en de Vercel-uitrol controleren. Lucas is bondscoach als presentatie; hij hoeft geen account te hebben. Namen of aanmeldgegevens geven nooit opstellingsbeheerrechten.
+
+## Officiële ADE-challenges (migratie 008)
+
+Ga naar **Supabase → SQL Editor → New query**, plak het volledige [docs/enable-ade-challenges.sql](docs/enable-ade-challenges.sql) en klik **Run** zonder tekstselectie. Je hoeft niets in het bestand te vervangen. Verwacht **13 ADE-challenges ingesteld** en de verdeling 7 × 10, 3 × 30, 3 × 100 punten. Alleen de gezamenlijke groep krijgt de nieuwe actieve lijst; oude challenges worden gearchiveerd. Bestaande inzendingen/reviews/awards houden hun oorspronkelijke punten en foto's. Nieuwe crews gebruiken de nieuwe dertien templates. Bestaande privécrews blijven ongewijzigd. De upgrade voegt ADE toe als festival en kan herhaald worden zonder dubbele challenges. De gebruikersinterface vertaalt de bestaande niveauwaarden; historische waarden blijven ondersteund.
+
+Controleer na Vercels GitHub-deployment (**ade → Deployments → Ready**) de vaste productie-URL, herlaad en open **Challenges**. Filters heten **🟢 Makkelijk**, **🟠 Medium** en **🔴 Bijna onmogelijk**; elke challenge is eenmaal per account te voltooien. De nieuwe lijst verandert bestaande privacy- of beoordelingsregels niet.

@@ -15,7 +15,7 @@ export const challengeSchema = z.object({
   title: z.string().trim().min(3).max(100),
   description: z.string().trim().min(10).max(2000),
   evidence: z.string().trim().min(5).max(1000),
-  festival: z.enum(["DGTL", "KI/KI"]),
+  festival: z.enum(["ADE", "DGTL", "KI/KI"]),
   difficulty: z.enum(["Easy", "Awkward", "No Shame", "Legendary"]),
   points: z.coerce.number().int().min(1).max(1000),
   repeatable: z.boolean(),
@@ -96,7 +96,7 @@ export type Challenge = {
   title: string;
   description: string;
   evidence: string;
-  festival: "DGTL" | "KI/KI";
+  festival: "ADE" | "DGTL" | "KI/KI";
   difficulty: "Easy" | "Awkward" | "No Shame" | "Legendary";
   points: number;
   repeatable: boolean;

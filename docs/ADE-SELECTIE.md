@@ -81,3 +81,7 @@ Verwacht **Opstellingsbeheer ingesteld; bevestigde accounts gekoppeld**. De twee
 Herlaad daarna de vaste productie-URL. Wacht in **Vercel → ade → Deployments** totdat de nieuwste GitHub-commit **Ready** is. Open **Home → Opstelling beheren**, kies per positie een account en sla op. Laat de spelersnaam leeg om altijd de nieuwste eigen profielnaam te gebruiken; een ingevulde spelersnaam is een bewuste afwijking. Profielfoto’s volgen altijd het gekoppelde account.
 
 Zonder Supabase-toegang kan de assistent deze productie-instellingen niet zelf uitlezen of wijzigen. Koppel bij een fout alleen de concrete fouttekst of de statuskolommen terug, zonder API-keys, wachtwoorden of tokens.
+
+## Nieuwe officiële challengelijst
+
+De 13 ADE-challenges staan in [enable-ade-challenges.sql](https://github.com/robinmsmit04/ade/blob/main/docs/enable-ade-challenges.sql). Voer het hele bestand uit in **Supabase → SQL Editor → New query → Run**, zonder iets te vervangen. Het voegt de nieuwe actieve lijst toe en archiveert de oude opdrachten in de gezamenlijke groep. Historische inzendingen, beoordelingen en verdiende punten blijven behouden. Verdeling: zeven Makkelijk van 10 punten, drie Medium van 30 punten en drie Bijna onmogelijk van 100 punten. Succesmelding: **13 ADE-challenges ingesteld**. Ververs de app na de nieuwste Vercel-deployment.

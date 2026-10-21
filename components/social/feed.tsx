@@ -109,6 +109,7 @@ export function Feed({
             onChange={(e) => social.setFilter("festival", e.target.value)}
           >
             <option value="">Alles</option>
+            <option>ADE</option>
             <option>DGTL</option>
             <option>KI/KI</option>
           </select>

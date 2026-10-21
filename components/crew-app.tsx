@@ -42,6 +42,7 @@ import { Avatar } from "@/components/avatar";
 import { Dialog as Modal } from "@/components/dialog";
 import { QuickRecord } from "@/components/quick-record";
 import { SelectionHome } from "@/components/selection/selection-home";
+import { difficultyLabel } from "@/lib/challenge-labels";
 import { ProfileSetup } from "@/components/profile-setup";
 import { CrewOverview } from "@/components/crew-overview";
 import { Button } from "@/components/ui/button";
@@ -374,7 +375,8 @@ export function CrewApp() {
             .from("challenges")
             .select("*")
             .eq("crew_id", cid)
-            .order("points"),
+            .order("points")
+            .order("id"),
           client
             .from("submissions")
             .select("*")
@@ -876,7 +878,7 @@ export function CrewApp() {
                   disabled={!uid || !cid || loading}
                   onClick={() => {
                     setPhotoChallenge(
-                      photoChallenges.find((c) => c.title === "Crew in beeld")
+                      photoChallenges.find((c) => c.title === "De dubbelganger")
                         ?.id ||
                         photoChallenges[0]?.id ||
                         "",
@@ -1371,7 +1373,7 @@ export function CrewApp() {
                   value={festival}
                   onChange={(e) => setFestival(e.target.value)}
                 >
-                  {["Alle", "DGTL", "KI/KI"].map((x) => (
+                  {["Alle", "ADE", "DGTL", "KI/KI"].map((x) => (
                     <option key={x}>{x}</option>
                   ))}
                 </select>
@@ -1381,8 +1383,17 @@ export function CrewApp() {
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
                 >
-                  {["Alle", ...difficulties].map((x) => (
-                    <option key={x}>{x}</option>
+                  {[
+                    "Alle",
+                    ...difficulties.filter((level) =>
+                      challenges.some(
+                        (c) => c.active && c.difficulty === level,
+                      ),
+                    ),
+                  ].map((x) => (
+                    <option key={x} value={x}>
+                      {x === "Alle" ? x : difficultyLabel(x)}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1404,7 +1415,7 @@ export function CrewApp() {
                     </div>
                     <div className="flex justify-between">
                       <span className="eyebrow">
-                        {c.festival} / {c.difficulty}
+                        {c.festival} / {difficultyLabel(c.difficulty)}
                       </span>
                       <span className="pill">{c.points} PT</span>
                     </div>
@@ -1476,7 +1487,7 @@ export function CrewApp() {
                   value={festival}
                   onChange={(e) => setFestival(e.target.value)}
                 >
-                  {["Alle", "DGTL", "KI/KI"].map((x) => (
+                  {["Alle", "ADE", "DGTL", "KI/KI"].map((x) => (
                     <option key={x}>{x}</option>
                   ))}
                 </select>
@@ -2113,7 +2124,8 @@ export function CrewApp() {
         <Modal title={selected.title} close={() => setSelected(null)}>
           <div className="stack">
             <p className="pill w-fit">
-              {selected.festival} · {selected.difficulty} · {selected.points} PT
+              {selected.festival} · {difficultyLabel(selected.difficulty)} ·{" "}
+              {selected.points} PT
             </p>
             <p className="text-sm leading-6 muted">{selected.description}</p>
             <div className="notice">
@@ -2357,7 +2369,7 @@ function ChallengeForm({
       <label>
         Festival
         <select name="festival" defaultValue={challenge?.festival}>
-          {["DGTL", "KI/KI"].map((x) => (
+          {["ADE", "DGTL", "KI/KI"].map((x) => (
             <option key={x}>{x}</option>
           ))}
         </select>
@@ -2366,7 +2378,9 @@ function ChallengeForm({
         Niveau
         <select name="difficulty" defaultValue={challenge?.difficulty}>
           {difficulties.map((x) => (
-            <option key={x}>{x}</option>
+            <option key={x} value={x}>
+              {difficultyLabel(x)}
+            </option>
           ))}
         </select>
       </label>

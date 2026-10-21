@@ -83,7 +83,7 @@ describe.sequential(
           `${failures.length} fixture account deletion(s) failed`,
         );
     });
-    it("creates private crews, seeds 20 challenges, and accepts an invitation idempotently", async () => {
+    it("creates private crews, seeds 13 challenges, and accepts an invitation idempotently", async () => {
       cid = (await rpc(a, "create_crew", {
         crew_name: "Integration crew",
       })) as string;
@@ -97,7 +97,7 @@ describe.sequential(
       const rows = (await assert(
         a.from("challenges").select("*").eq("crew_id", cid),
       )) as { id: string }[];
-      expect(rows).toHaveLength(20);
+      expect(rows).toHaveLength(13);
       challenge = rows[0].id;
       expect(
         (await d.from("members").select("*").eq("crew_id", cid)).data,

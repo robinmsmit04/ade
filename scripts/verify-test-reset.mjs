@@ -58,7 +58,7 @@ try {
  do $$declare cid uuid; sid uuid:=gen_random_uuid(); path text; ch public.challenges;begin
   select crew_id into cid from public.community_settings where singleton;
   update public.members set role='admin' where crew_id=cid and user_id='${ids[0]}';
-  select * into ch from public.challenges where crew_id=cid limit 1;
+  select * into ch from public.challenges where crew_id=cid and active limit 1;
   path:=cid::text||'/${ids[0]}/'||sid::text||'.jpg';
   insert into storage.objects(bucket_id,name) values('crew-evidence',path);
   update public.team_settings set manager_id='${ids[0]}' where crew_id=cid;

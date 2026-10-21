@@ -213,9 +213,9 @@ test("Home camera preserves orientation, corrects mirrored files, retries privat
           : "Hoofdnavigatie",
     });
     await nav.getByRole("button", { name: "Challenges", exact: true }).click();
-    await page.getByRole("button", { name: /Crew in beeld/ }).click();
+    await page.getByRole("button", { name: /De dubbelganger/ }).click();
     const completed = page.getByRole("dialog", {
-      name: "Crew in beeld",
+      name: "De dubbelganger",
       exact: true,
     });
     await expect(
