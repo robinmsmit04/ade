@@ -129,3 +129,7 @@ Kortlevende medialinks blijven tot maximaal 60 seconden bruikbaar na uitgifte. D
 De update na V3 gebruikt dezelfde migraties 001–006, buckets en omgevingsvariabelen. Geen nieuwe SQL uitvoeren voor de cameraknop of ranglijst. Wacht in Vercel op de nieuwste main-build met status Ready. Camera via `getUserMedia` vereist HTTPS (of localhost) en een expliciete browsertoestemming. Bij blokkade kan de gebruiker de systeemcamera of bibliotheek gebruiken. Corrigeer een reeds gespiegeld bestand vóór het delen met **Spiegelen corrigeren**; een ingebakken spiegeling kan niet automatisch betrouwbaar worden herkend.
 
 Bij een challengefout staat nu in het formulier of **Upload mislukt** (Storage) of **Inzenden mislukt** (de serverfunctie), gevolgd door de concrete fout. Laat selectie en toestemming staan voor een retry; de app hergebruikt de vaste upload-ID. Een oude algemene melding uit een eerdere deployment is niet voldoende om de hosted oorzaak vast te stellen. Bekijk pas de echte fout in de nieuwste build; verstrek geen credentials om deze diagnose te doen. De applicatie wijzigt geen hosted bucket-/accountrechten om een fout te omzeilen.
+
+## Livegang op eigen domein
+
+De volledige dashboardhandleiding staat in [docs/DOMEIN-EN-LIVEGANG.md](docs/DOMEIN-EN-LIVEGANG.md). Die behandelt Vercel/DNS, Resend met een eigen verzendsubdomein, Supabase SMTP/Auth-redirects, proefronde, de eenmalige opschoning en de eindcontrole. Het opschoonbestand staat buiten migrations en wordt nooit automatisch uitgevoerd.

@@ -2,6 +2,8 @@
 
 Mobiele app voor één gezamenlijke Crew Control-omgeving tijdens Amsterdam Dance Event. Iedereen kan via dezelfde URL een account aanmaken en na e-mailbevestiging automatisch deelnemen. Donkere festivalstijl, lime accenten en een navigatie voor bediening met één hand. Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui Button, Supabase Auth/PostgreSQL/Realtime/Storage, Zod, React Hook Form, Vitest en Playwright.
 
+Lees [Domein en livegang](docs/DOMEIN-EN-LIVEGANG.md) voor je eigen domein, bevestigingsmails, opschonen met behoud van accounts en de controle vóór delen met vrienden.
+
 ## Starten
 
 Node.js 22 of hoger (in deze omgeving: Node 24), npm en een Supabase-project met de migraties uit `supabase/migrations`.

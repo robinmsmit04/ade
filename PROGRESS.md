@@ -118,3 +118,10 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Nieuwe tests bewijzen pixelrichting, expliciete correctie, private orphan-upload, retry zonder dubbele inzending en toestemming/volgorde van de ranglijst. De volledige controles staan in TESTING.md. Hosted deployment en fysieke iPhonecamera blijven buiten de beschikbare projecttoegang.
 
 De eindcontrole van de camera-/ranglijstupdate slaagt: 9 unit-tests, 20 desktop-/mobiele browsertests, typecheck, lint en productiebuild. De snapshots zijn bekeken; de mobiele cameraflow is ingekort met preview vóór vervangopties. Geen nieuwe migraties of dependencies. De nieuwe concrete foutmelding moet de hosted oorzaak zichtbaar maken als de upload bij de gebruiker nog mislukt.
+
+## Voorbereiding schone livegang
+
+- Gebruiker wil testgegevens wissen en bevestigt expliciet dat accounts behouden moeten blijven. Voorbereid: `docs/reset-test-data.sql`, handmatig als projecteigenaar uitvoeren na het legen van uitsluitend crew-evidence via Storage. Profielen/avatars, rollen, crews, challenges en beveiliging blijven; content/uitnodigingen verdwijnen en delen wordt privé. Geen productie-uitvoering zonder hosted toegang.
+- Reset op een afzonderlijke lokale databasekopie getest met behoudchecks, Storage-guard, herhaalbaarheid en gewone inschrijving na de reset. Kopie na afloop verwijderd. Het script heeft geen remote databaseoptie.
+- Gebruiker heeft custom SMTP niet ingesteld, maar heeft wel een eigen domein. `docs/DOMEIN-EN-LIVEGANG.md` beschrijft de volledige route: app-subdomein naar Vercel, publieke Production, Resend-verzenddomein/DNS, Supabase SMTP en callbacks, externe proefregistratie, definitieve reset en delen. Sleutels uitsluitend in de dashboards.
+- Geen domeinnaam, DNS-, Resend- of hosted Supabase-/Vercel-beheerverbinding beschikbaar. Geen externe wijzigingen of publieke mailbezorging geclaimd. De handleiding en opschoonbestanden worden naar GitHub gepusht voor uitvoering door de projecteigenaar.
