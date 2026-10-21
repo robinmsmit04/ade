@@ -90,3 +90,10 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Lokale controles: 26 integratietests, 7 unit-tests, typecheck, lint en productiebuild geslaagd. 12 desktop-/mobiele Chromium-browsercases tegen productiemodus; aanvullende regressiecontrole voorkomt foutmeldingen na uitloggen en onjuist doorwerken van een crew-datumfilter op Home.
 - Hosted vervolgstap: voer eenmaal het volledige `docs/enable-mobile-v2.sql` uit via Supabase SQL Editor, met de eerste drie migraties als bestaande basis. Verwachte status: `Crew Control V2 ingesteld`. Geen nieuwe omgevingsvariabelen nodig. Nieuwe lege projecten gebruiken de volledige installatie met vier migraties.
 - Geen hosted Supabase-/Vercel-beheerrechten in deze sessie. Native Git-push kan de gekoppelde Vercel-build activeren; publieke readiness is niet vanuit hier bevestigd. WebKit/fysieke iPhone niet getest.
+
+## Herstel na handmatige Auth-accountverwijdering
+
+- Het generieke aansluitingsscherm verborg de werkelijke fout. De client verifieert bij een mislukte inschrijving of de Auth-identiteit nog bestaat; een verwijderde/verlopen identiteit wordt lokaal uitgelogd. Er is ook een expliciete knop terug naar inloggen.
+- Ontbrekende platformfunctie, ontbrekende platformconfiguratie en onbevestigde e-mail krijgen afzonderlijke meldingen; overige gevallen tonen een foutcode. Er wordt geen productie-SQL uitgevoerd of e-mailbevestiging uitgeschakeld.
+- Inlogscherm kan een signup-bevestigingsmail opnieuw aanvragen, met behoud van invitecallback. Verzendfouten worden getoond; een succesvolle API-aanvraag claimt niet dat een mail is afgeleverd.
+- Gerichte browsercases simuleren een ontbrekende RPC, een door Auth geweigerde oude identiteit, een mailratelimiet en een succesvolle heraanvraag. Hosted oorzaak/mailbezorging blijven onbekend zonder toegang tot Auth Users en logs. Geen nieuwe migratie nodig voor deze clientcorrectie.

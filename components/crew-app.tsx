@@ -254,10 +254,47 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     if (!uid) return;
     const client = getSupabase();
     const enrollment = await client.rpc("ensure_community_membership");
-    if (enrollment.error)
+    if (enrollment.error) {
+      // A deleted Auth user can leave a locally valid JWT until it expires.
+      // Verify with Auth before diagnosing the database configuration.
+      const verified = await client.auth.getUser();
+      if (
+        verified.error &&
+        ([401, 403].includes(verified.error.status || 0) ||
+          verified.error.name === "AuthSessionMissingError" ||
+          [
+            "user_not_found",
+            "session_not_found",
+            "refresh_token_not_found",
+            "refresh_token_already_used",
+            "bad_jwt",
+          ].includes(verified.error.code || ""))
+      ) {
+        await client.auth.signOut({ scope: "local" });
+        return;
+      }
+      if (
+        !verified.error &&
+        verified.data.user &&
+        !verified.data.user.email_confirmed_at
+      )
+        throw new Error(
+          "Bevestig eerst je e-mailadres. Je kunt via het inlogscherm een nieuwe bevestigingsmail aanvragen.",
+        );
+      if (["PGRST202", "42883"].includes(enrollment.error.code))
+        throw new Error(
+          "De platformfunctie is niet beschikbaar in Supabase. Laat de beheerder migratie 003 controleren.",
+        );
+      if (enrollment.error.message === "Bevestig eerst je e-mailadres")
+        throw new Error(enrollment.error.message);
+      if (enrollment.error.message === "Het platform is nog niet ingesteld")
+        throw new Error(
+          "De gezamenlijke omgeving is nog niet ingesteld in Supabase. Laat de beheerder de platformconfiguratie controleren.",
+        );
       throw new Error(
-        "Je account kon nog niet worden klaargezet. De beheerder moet de platformupdate uitvoeren, of probeer het opnieuw.",
+        `Je account kon niet worden geladen. Controleer je verbinding en probeer opnieuw. Foutcode: ${enrollment.error.code || "onbekend"}.`,
       );
+    }
     const profileResult = await client
       .from("profiles")
       .select("*")
@@ -525,6 +562,12 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             Opnieuw proberen
           </Button>
         )}
+        <Button
+          variant="ghost"
+          onClick={() => void getSupabase().auth.signOut({ scope: "local" })}
+        >
+          Terug naar inloggen
+        </Button>
       </main>
     );
   if (session && selfProfile && !selfProfile.onboarding_completed_at)

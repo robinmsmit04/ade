@@ -69,6 +69,40 @@ export function AuthForm() {
         "Als dit account bestaat, ontvang je een herstelmail. Open daarna Instellingen om je wachtwoord te wijzigen.",
       );
   }
+  const [sendingConfirmation, setSendingConfirmation] = useState(false);
+  async function resendConfirmation() {
+    const email = (
+      document.getElementById("email") as HTMLInputElement
+    )?.value.trim();
+    setError("");
+    setMessage("");
+    if (!email || !z.email().safeParse(email).success) {
+      setError("Vul eerst een geldig e-mailadres in.");
+      return;
+    }
+    setSendingConfirmation(true);
+    try {
+      const { error } = await getSupabase().auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: `${location.origin}/auth/callback${sessionStorage.getItem("crew-invite") ? "?next=/invite/" + sessionStorage.getItem("crew-invite") : ""}`,
+        },
+      });
+      if (error) throw error;
+      setMessage(
+        "Als je account nog op bevestiging wacht, ontvang je een nieuwe mail. Controleer ook je spammap.",
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Versturen mislukt. Probeer later opnieuw.",
+      );
+    } finally {
+      setSendingConfirmation(false);
+    }
+  }
   return (
     <div className="auth">
       <div className="brand">
@@ -136,6 +170,15 @@ export function AuthForm() {
           {mode === "signup"
             ? "Al een account? Inloggen"
             : "Nieuw hier? Maak een account"}
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={sendingConfirmation || isSubmitting}
+          onClick={() => void resendConfirmation()}
+        >
+          {sendingConfirmation
+            ? "Mail aanvragen…"
+            : "Bevestigingsmail opnieuw sturen"}
         </Button>
         <button className="link text-sm" onClick={reset}>
           Wachtwoord vergeten
