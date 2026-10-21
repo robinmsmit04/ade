@@ -5,4 +5,5 @@ export const recordLabels = [
   "XTC",
   "Paddo-druppels",
   "Joint",
+  "3MMC",
 ] as const;

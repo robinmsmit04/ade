@@ -63,7 +63,9 @@ export function QuickRecord({
               </button>
             ))}
             <button className="substance-tile" onClick={() => setOther(true)}>
-              <span className="tile-number">06</span>
+              <span className="tile-number">
+                {String(recordLabels.length + 1).padStart(2, "0")}
+              </span>
               <strong>Anders</strong>
               <span className="tile-plus">+</span>
             </button>
