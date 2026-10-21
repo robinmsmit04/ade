@@ -278,7 +278,9 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
       await submission
         .getByRole("button", { name: "Goedkeuren", exact: true })
         .click();
-      await expect(p.getByRole("status")).toContainText("Stem opgeslagen.");
+      await expect(
+        p.locator(".notice").filter({ hasText: "Stem opgeslagen." }),
+      ).toBeVisible();
     }
     await openTab(author, "Leaderboard");
     await expect(

@@ -1,6 +1,11 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- private signed media URLs expire; image optimization would cache them */
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
 import { ZodError } from "zod";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -23,7 +28,15 @@ import {
   Download,
   Home,
   Link2,
+  Bell,
+  PanelsTopLeft,
 } from "lucide-react";
+import { Feed } from "@/components/social/feed";
+import { MediaAlbum } from "@/components/social/album";
+import { Notifications } from "@/components/social/notifications";
+import { useSocial } from "@/components/social/use-social";
+import { useNavigation } from "@/lib/use-navigation";
+import { EvidenceUpload } from "@/components/evidence-upload";
 import { Avatar } from "@/components/avatar";
 import { Dialog as Modal } from "@/components/dialog";
 import { QuickRecord } from "@/components/quick-record";
@@ -63,9 +76,27 @@ type Tab =
   | "friend"
   | "more"
   | "crew"
-  | "crews";
+  | "crews"
+  | "feed";
+const tabs: readonly Tab[] = [
+  "live",
+  "timeline",
+  "checkins",
+  "challenges",
+  "review",
+  "leaderboard",
+  "wall",
+  "settings",
+  "admin",
+  "friend",
+  "more",
+  "crew",
+  "crews",
+  "feed",
+];
 const nav = [
   { id: "live", label: "Home", icon: Home },
+  { id: "feed", label: "Feed", icon: PanelsTopLeft },
   { id: "timeline", label: "Tijdlijn", icon: Clock },
   { id: "crew", label: "Crew", icon: Users },
   { id: "challenges", label: "Challenges", icon: Flag },
@@ -93,51 +124,16 @@ function errorText(e: unknown) {
 function Empty({ children }: { children: React.ReactNode }) {
   return <div className="empty">{children}</div>;
 }
-function Proof({ submission }: { submission: Submission }) {
-  const [url, setUrl] = useState("");
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      const { data, error } = await getSupabase()
-        .storage.from("crew-evidence")
-        .createSignedUrl(submission.file_path, 60);
-      if (alive) {
-        if (error) {
-          setUrl("");
-          setErr("Bewijs niet beschikbaar.");
-        } else {
-          setErr("");
-          setUrl(data.signedUrl);
-        }
-      }
-    }
-    void load();
-    const timer = setInterval(() => void load(), 45000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [submission.file_path]);
-  if (err) return <p role="alert">{err}</p>;
-  if (!url) return <p className="muted">Bewijs laden…</p>;
-  return submission.mime_type.startsWith("video/") ? (
-    <video
-      className="media"
-      controls
-      playsInline
-      preload="metadata"
-      src={url}
-      aria-label={`Bewijs: ${submission.title}`}
-    />
-  ) : (
-    <img className="media" alt={`Bewijs: ${submission.title}`} src={url} />
-  );
-}
 
 export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const [selfProfile, setSelfProfile] = useState<Profile>();
   const [profileMenu, setProfileMenu] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [partyDialog, setPartyDialog] = useState<"end" | "start" | null>(null);
+  const [parties, setParties] = useState<
+    { user_id: string; started_at: string | null; ended_at: string | null }[]
+  >([]);
+  const [partyLatest, setPartyLatest] = useState<RecordEntry | null>(null);
   const [pendingInvite, setPendingInvite] = useState(inviteToken || "");
   const [communityId, setCommunityId] = useState("");
   const [summaries, setSummaries] = useState<CrewSummary[]>([]);
@@ -147,7 +143,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const [inviteLink, setInviteLink] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [boot, setBoot] = useState(configured);
-  const [tab, setTab] = useState<Tab>("live");
+  const [tab, navigate] = useNavigation<Tab>("live", tabs);
   const [crews, setCrews] = useState<Crew[]>([]);
   const [cid, setCid] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
@@ -183,6 +179,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const generation = useRef(0);
   const actionLock = useRef(false);
   const uid = session?.user.id || "";
+  const social = useSocial(cid, uid, tab === "review");
   const crew = crews.find((c) => c.id === cid);
   const admin = members.some((m) => m.user_id === uid && m.role === "admin");
   const name = (id: string) =>
@@ -190,6 +187,8 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     (id === uid ? "Jij" : "Crewlid");
   const clearData = useCallback(() => {
     setSummaries([]);
+    setParties([]);
+    setPartyLatest(null);
     setRecords([]);
     setCheckins([]);
     setSubmissions([]);
@@ -221,12 +220,18 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         setCrews([]);
         setCid("");
         setSelfProfile(undefined);
+        setProfileMenu(false);
+        setNotificationOpen(false);
+        setPartyDialog(null);
+        setRecordOpen(false);
+        setSelected(null);
+        navigate("live");
         setError("");
         setNotice("");
       }
     });
     return () => data.subscription.unsubscribe();
-  }, [clearData, inviteToken]);
+  }, [clearData, inviteToken, navigate]);
   useEffect(() => {
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -374,6 +379,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   ? timelineDay
                   : "") || null,
           }),
+          client
+            .from("party_state")
+            .select("user_id,started_at,ended_at")
+            .eq("crew_id", cid),
+          client.rpc("my_party_latest", { cid }),
           client.rpc("leaderboard", {
             cid,
             festival_filter: festival === "Alle" ? null : festival,
@@ -382,7 +392,8 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         ]);
         if (gen !== generation.current) return;
         for (const r of responses) if (r.error) throw r.error;
-        const [m, p, r, c, ch, s, cons, rev, summary, sc] = responses;
+        const [m, p, r, c, ch, s, cons, rev, summary, party, latest, sc] =
+          responses;
         if (!m.data?.some((x) => x.user_id === uid)) {
           clearData();
           await loadCrews();
@@ -400,6 +411,8 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         setReviews(rev.data || []);
         setScores(sc.data || []);
         setSummaries(summary.data || []);
+        setParties(party.data || []);
+        setPartyLatest(latest.data?.[0] || null);
       } catch (e) {
         if (gen === generation.current) {
           clearData();
@@ -424,10 +437,15 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
       crewDay,
     ],
   );
+  const syncCurrent = useEffectEvent(() => void refresh(true));
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear sensitive results immediately before replacing the crew subscription
-    clearData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch external data when the selected view/filter changes
     void refresh();
+  }, [refresh]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new identity/crew must drop previous sensitive results
+    clearData();
+    setConnected(false);
     if (!cid || !uid) return;
     const client = getSupabase();
     const channel = client
@@ -440,20 +458,20 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
           table: "activity",
           filter: `crew_id=eq.${cid}`,
         },
-        () => void refresh(true),
+        () => syncCurrent(),
       )
       .on("system", {}, (payload) => {
         if (payload.extension === "postgres_changes") {
           setConnected(payload.status === "ok");
-          if (payload.status === "ok") void refresh(true);
+          if (payload.status === "ok") syncCurrent();
         }
       })
       .subscribe((status) => {
         // A joined WebSocket is not proof that PostgreSQL replication is ready.
         if (status !== "SUBSCRIBED") setConnected(false);
       });
-    const timer = setInterval(() => void refresh(true), 15000);
-    const focus = () => void refresh(true);
+    const timer = setInterval(() => syncCurrent(), 15000);
+    const focus = () => syncCurrent();
     window.addEventListener("online", focus);
     window.addEventListener("focus", focus);
     return () => {
@@ -464,7 +482,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
       window.removeEventListener("online", focus);
       window.removeEventListener("focus", focus);
     };
-  }, [cid, uid, refresh, clearData]);
+  }, [cid, uid, clearData]);
   async function run(fn: () => Promise<void>, success?: string) {
     if (actionLock.current) return;
     actionLock.current = true;
@@ -499,7 +517,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     return data;
   }
   function go(t: Tab) {
-    setTab(t);
+    navigate(t);
     setProfileMenu(false);
     if (t === "live") setCrewDay("");
     setFestival("Alle");
@@ -509,6 +527,10 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     setError("");
   }
   function newRecord() {
+    if (parties.find((p) => p.user_id === uid)?.ended_at) {
+      setPartyDialog("start");
+      return;
+    }
     if (!uid || !cid) {
       setNotice(
         configured
@@ -521,7 +543,13 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     setRecordOpen(true);
   }
   const myRecords = records.filter((r) => r.user_id === uid);
-  const lastPersonal = summaries.find((s) => s.user_id === uid);
+  const lastPersonal = partyLatest
+    ? {
+        last_substance: partyLatest.substance,
+        last_taken_at: partyLatest.taken_at,
+      }
+    : null;
+  const partyEnded = parties.find((p) => p.user_id === uid)?.ended_at;
 
   const filteredChallenges = challenges.filter(
     (c) =>
@@ -537,10 +565,16 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   );
   if (boot)
     return (
-      <main className="auth">
-        <p role="status" className="notice">
-          Crew Control laden…
-        </p>
+      <main
+        className="auth stack"
+        role="status"
+        aria-label="Crew Control laden"
+      >
+        <div className="skeleton skeleton-line" />
+        <div className="card stack">
+          <div className="skeleton skeleton-line" />
+          <div className="skeleton media-placeholder" />
+        </div>
       </main>
     );
   if (configured && !session) return <AuthForm />;
@@ -617,6 +651,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             >
               <n.icon size={18} />
               {n.label}
+              {n.id === "feed" && social.unread > 0 && (
+                <span className="nav-unread" aria-hidden="true">
+                  {social.unread > 99 ? "99+" : social.unread}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -657,6 +696,21 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               {!online ? "OFFLINE" : connected ? "LIVE" : "VERBINDEN"}
             </span>
             <button
+              className="notification-bell"
+              aria-label="Meldingen"
+              onClick={() => setNotificationOpen(true)}
+            >
+              <Bell size={22} />
+              {social.unread > 0 && (
+                <span
+                  className="unread-badge"
+                  aria-label={`${social.unread} ongelezen meldingen`}
+                >
+                  {social.unread > 99 ? "99+" : social.unread}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setProfileMenu(true)}
               aria-label="Mijn profiel"
             >
@@ -667,7 +721,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             </button>
           </div>
         </header>
-        <div className="content">
+        <div className="content" aria-busy={loading}>
+          <div
+            className={`sync-progress ${loading ? "syncing" : ""}`}
+            aria-hidden="true"
+          />
           {!online && (
             <p className="notice error mb-5" role="alert">
               <WifiOff className="inline mr-2" size={16} />
@@ -766,7 +824,16 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   <span className="eyebrow">JOUW LAATSTE REGISTRATIE</span>
                   <Clock size={17} className="muted" />
                 </div>
-                {lastPersonal ? (
+                {partyEnded ? (
+                  <div className="party-ended">
+                    <Flag size={28} />
+                    <h2>Feest afgerond.</h2>
+                    <p className="muted text-sm">
+                      Afgesloten op {formatDate(partyEnded)}. Je historie staat
+                      in Tijdlijn.
+                    </p>
+                  </div>
+                ) : lastPersonal ? (
                   <>
                     <div className="elapsed-big">
                       {elapsed(lastPersonal.last_taken_at)}
@@ -791,12 +858,23 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               </div>
               <Button
                 className="home-register"
-                onClick={newRecord}
+                onClick={() =>
+                  partyEnded ? setPartyDialog("start") : newRecord()
+                }
                 disabled={configured && (!cid || loading)}
               >
                 <Plus size={22} />
-                Nieuwe registratie
+                {partyEnded ? "Nieuw feest starten" : "Nieuwe registratie"}
               </Button>
+              {!partyEnded && uid && (
+                <button
+                  className="party-end-action"
+                  onClick={() => setPartyDialog("end")}
+                >
+                  <Flag size={16} />
+                  Feest afronden
+                </button>
+              )}
               <section className="home-crew">
                 <div className="section-title">
                   <h2>Jouw mensen</h2>
@@ -811,6 +889,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   members={members}
                   profiles={profiles}
                   summaries={summaries}
+                  parties={parties}
                   uid={uid}
                   compact
                   open={(id) => {
@@ -870,6 +949,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                 members={members}
                 profiles={profiles}
                 summaries={summaries}
+                parties={parties}
                 uid={uid}
                 open={(id) => {
                   if (id === uid) {
@@ -1303,104 +1383,37 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               )}
             </section>
           )}
-          {tab === "review" && (
-            <section className="stack">
-              <div>
-                <p className="eyebrow mb-3">DE CREW BESLIST</p>
-                <h1>Beoordelen</h1>
-                <p className="text-sm muted mt-3">
-                  {crew?.review_threshold || 2} andere crewleden moeten
-                  goedkeuren. Eén afwijzing sluit een inzending af; opnieuw
-                  inzenden mag daarna.
-                </p>
-              </div>
-              {pending.map((s) => (
-                <div key={s.id} className="card stack">
-                  <div className="section-title !mb-0">
-                    <h2>{s.title}</h2>
-                    <span className="pill">{s.points} PT</span>
-                  </div>
-                  <p className="text-sm muted">
-                    Door {name(s.user_id)} · {formatDate(s.created_at)}
-                  </p>
-                  <Proof submission={s} />
-                  <p className="text-sm muted">
-                    Bewijsvereiste:{" "}
-                    {challenges.find((c) => c.id === s.challenge_id)?.evidence}
-                  </p>
-                  <p className="text-xs muted">
-                    {
-                      reviews.filter(
-                        (r) => r.submission_id === s.id && r.approved,
-                      ).length
-                    }{" "}
-                    goedkeuringen
-                  </p>
-                  <div className="flex gap-3">
-                    <Button
-                      disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          await rpc("review_submission", {
-                            sid: s.id,
-                            approve: true,
-                          });
-                        }, "Stem opgeslagen.")
-                      }
-                    >
-                      <Check size={16} /> Goedkeuren
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          await rpc("review_submission", {
-                            sid: s.id,
-                            approve: false,
-                          });
-                        }, "Inzending afgewezen.")
-                      }
-                    >
-                      Afkeuren
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {!pending.length && (
-                <div className="card">
-                  <Empty>
-                    <Check size={32} className="mx-auto text-lime-300 mb-3" />
-                    Helemaal bij. Geen inzendingen om te beoordelen.
-                  </Empty>
-                </div>
-              )}
-              <h2 className="mt-5">Mijn inzendingen</h2>
-              {submissions
-                .filter((s) => s.user_id === uid)
-                .map((s) => (
-                  <div
-                    className="card flex justify-between items-center gap-3"
-                    key={s.id}
-                  >
-                    <div>
-                      <h3>{s.title}</h3>
-                      <p className="text-xs muted mt-2">
-                        {formatDate(s.created_at)}
-                      </p>
-                    </div>
-                    <span className="pill">
-                      {
-                        {
-                          pending: "In beoordeling",
-                          approved: "Goedgekeurd",
-                          rejected: "Afgewezen",
-                        }[s.status]
-                      }
-                    </span>
-                  </div>
-                ))}
-            </section>
+          {tab === "feed" && (
+            <div className="feed-shortcuts">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  social.setFocusedId("");
+                  go("wall");
+                }}
+              >
+                <Camera size={18} />
+                Fotoalbum
+              </Button>
+              <Button variant="ghost" onClick={() => go("challenges")}>
+                <Flag size={18} />
+                Opdrachten
+              </Button>
+            </div>
+          )}
+          {(tab === "feed" || tab === "review") && (
+            <Feed
+              key={cid}
+              social={social}
+              uid={uid}
+              threshold={crew?.review_threshold || 2}
+              reviewOnly={tab === "review"}
+              openChallenge={(id) => {
+                const ch = challenges.find((c) => c.id === id);
+                if (ch) setSelected(ch);
+              }}
+              onChanged={() => void refresh(true)}
+            />
           )}
           {tab === "leaderboard" && (
             <section className="stack">
@@ -1479,37 +1492,14 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             </section>
           )}
           {tab === "wall" && (
-            <section className="stack">
-              <div>
-                <p className="eyebrow mb-3">WHAT HAPPENS IN THE CREW…</p>
-                <h1>Wall of Shame</h1>
-                <p className="muted text-sm mt-3">
-                  Onze beste momenten. Alleen voor bevestigde deelnemers.
-                </p>
-              </div>
-              <div className="challenge-grid">
-                {submissions
-                  .filter((s) => s.status === "approved")
-                  .map((s) => (
-                    <article key={s.id} className="card stack">
-                      <Proof submission={s} />
-                      <h2>{s.title}</h2>
-                      <p className="text-xs muted">
-                        {name(s.user_id)} · {s.festival} ·{" "}
-                        {formatDate(s.created_at)}
-                      </p>
-                    </article>
-                  ))}
-              </div>
-              {!submissions.some((s) => s.status === "approved") && (
-                <div className="card">
-                  <Empty>
-                    <Camera size={32} className="mx-auto mb-3 text-lime-300" />
-                    Goedgekeurde inzendingen krijgen hier een plek.
-                  </Empty>
-                </div>
-              )}
-            </section>
+            <MediaAlbum
+              key={cid}
+              social={social}
+              openPost={(id) => {
+                social.setFocusedId(id);
+                go("feed");
+              }}
+            />
           )}
           {tab === "settings" && (
             <section className="stack">
@@ -1892,9 +1882,60 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
           >
             <n.icon size={21} />
             {n.label}
+            {n.id === "feed" && social.unread > 0 && (
+              <span className="nav-unread" aria-hidden="true">
+                {social.unread > 99 ? "99+" : social.unread}
+              </span>
+            )}
           </button>
         ))}
       </nav>
+      {partyDialog && (
+        <Modal
+          title={
+            partyDialog === "end" ? "Feest afronden?" : "Nieuw feest starten?"
+          }
+          close={() => setPartyDialog(null)}
+        >
+          <div className="stack">
+            <p className="muted text-sm">
+              {partyDialog === "end"
+                ? "Je sluit alleen jouw feest af. De teller op Home stopt; al je registraties blijven in Tijdlijn staan. Dit zegt niets over effecten of veiligheid."
+                : "Je begint met een leeg registratieblok op Home. Je eerdere registraties blijven bewaard in Tijdlijn."}
+            </p>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                void run(
+                  async () => {
+                    await rpc(
+                      partyDialog === "end" ? "end_my_party" : "start_my_party",
+                      { cid },
+                    );
+                    setPartyDialog(null);
+                    go("live");
+                  },
+                  partyDialog === "end"
+                    ? "Feest afgerond. Je historie is bewaard."
+                    : "Nieuw feest gestart.",
+                )
+              }
+            >
+              {partyDialog === "end" ? "Feest afronden" : "Nieuw feest starten"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+      {notificationOpen && (
+        <Notifications
+          social={social}
+          close={() => setNotificationOpen(false)}
+          openPost={(id) => {
+            social.setFocusedId(id);
+            go("feed");
+          }}
+        />
+      )}
       {profileMenu && (
         <Modal title="Jouw profiel" close={() => setProfileMenu(false)}>
           <div className="stack">
@@ -1996,7 +2037,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               uitsluitend met toestemming van iedereen in beeld. Je crew kan het
               bewijs na inzenden bekijken.
             </p>
-            <UploadForm
+            <EvidenceUpload
               busy={busy}
               upload={async (file, id, path) => {
                 let ok = false;
@@ -2020,6 +2061,9 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   });
                   ok = true;
                   setSelected(null);
+                  social.setFocusedId(id);
+                  go("feed");
+                  await social.refresh();
                 }, "Bewijs ingezonden.");
                 return ok;
               }}
@@ -2151,72 +2195,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   );
 }
 
-function UploadForm({
-  busy,
-  upload,
-  cid,
-  uid,
-}: {
-  busy: boolean;
-  upload: (file: File, id: string, path: string) => Promise<boolean>;
-  cid: string;
-  uid: string;
-}) {
-  const [file, setFile] = useState<File | null>(null);
-  const [id, setId] = useState(() => crypto.randomUUID());
-  const [error, setError] = useState("");
-  return (
-    <form
-      className="stack"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (!file) return;
-        try {
-          validateMedia(file);
-          setError("");
-          const saved = await upload(
-            file,
-            id,
-            `${cid}/${uid}/${id}.${({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" } as Record<string, string>)[file.type]}`,
-          );
-          if (!saved)
-            setError(
-              "Uploaden of indienen mislukt. Je bestand blijft geselecteerd. Probeer opnieuw.",
-            );
-        } catch (e) {
-          setError(errorText(e));
-        }
-      }}
-    >
-      <label>
-        Foto of video
-        <input
-          name="proof"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
-          required
-          disabled={busy}
-          onChange={(e) => {
-            setFile(e.target.files?.[0] || null);
-            setId(crypto.randomUUID());
-          }}
-        />
-      </label>
-      <label className="flex gap-3 items-center">
-        <input type="checkbox" required />
-        Iedereen in beeld stemt in met delen binnen de crew
-      </label>
-      {error && (
-        <p role="alert" className="notice error">
-          {error}
-        </p>
-      )}
-      <Button disabled={busy || !file || !uid || !cid}>
-        {busy ? "Uploaden…" : "Bewijs inzenden"}
-      </Button>
-    </form>
-  );
-}
 function ChallengeForm({
   challenge,
   busy,

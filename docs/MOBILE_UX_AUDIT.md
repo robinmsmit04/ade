@@ -1,0 +1,28 @@
+# Crew Control V3 — mobiele audit
+
+De bestaande Next.js-app is behouden. Geen nieuwe UI-library of tweede backend. Onderstaande bevindingen zijn opgelost in code; lokale browserverificatie staat in TESTING.md. Fysieke camera, Safari, productie-auth en hosted netwerk blijven afzonderlijke praktijkchecks.
+
+| Scherm/onderdeel            | Bevinding vóór V3                                                        | Aanpassing                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Appnavigatie                | Elke tab/filter zette opnieuw een subscription op en wiste geladen data  | Stabiele subscription per crew/account, bestaande data tijdens herladen, dunne laadindicator, lokale schermtransitie        |
+| Terugknop                   | Lokale tabstate volgde browserhistory niet                               | History-entry per navigatie, scrollpositie per tab; Back sluit eerst een sheet                                              |
+| Login/herstel               | Eerder herstelde Auth-fouten moesten zichtbaar blijven                   | Bestaande herstel-/mailknoppen behouden; skeleton bij eerste sessiecontrole                                                 |
+| Profiel/onboarding          | Camera/preview al aanwezig, kleine schermen en toetsenbord vragen ruimte | Gemeenschappelijke sheets/viewport-safe CSS, 16px inputs, bestaande profielen en optionele camera behouden                  |
+| Home                        | Laatste registratie bleef eindeloos als lopend blok staan                | Persoonlijk Feest afronden, persistente eindstatus, bewust nieuw feest starten zonder historieverlies                       |
+| Registreren                 | Modal en offline-invoer waren beschikbaar                                | Mobiele bottom sheet, preview-/focus-/Back-gedrag, eigen UUID en dubbele-submitbescherming behouden                         |
+| Tijdlijn en vrienden        | Dag-/labelhistorie en consent zijn al aanwezig                           | Geen herlaadflash bij filters, bestaande databasefilters/RLS behouden; volledige historie blijft na feestafsluiting         |
+| Crew                        | Historische tijden bleven na de avond doorlopen                          | Gedeelde eindstatus vervangt lopende verstreken tijd; alleen bij bestaande toestemming                                      |
+| Challenges                  | Reviews verstopt en beperkt tot nog te stemmen items                     | Vast Feed-tabblad, directe feed na inzending, alle statussen en eigen inzendingen zichtbaar                                 |
+| Beoordelen                  | Losse presentatie met eigen/uitgebrachte stemmen verborgen               | Dezelfde feedkaarten en bestaande transactionele RPC; stemstand en toestemming expliciet                                    |
+| Upload                      | Eén bestandsveld zonder preview of camerakeuze                           | Bibliotheek + foto/video-capture, lokale preview, fout met behouden selectie/toestemming, duidelijke uploadstatus           |
+| Fotoalbum/Wall              | Alleen goedgekeurde inzendingen, geen viewer of filters                  | Alle statussen, serverfilters, grid, fullscreen, swipe, videobediening, terug naar Feed                                     |
+| Sociale reacties            | Ontbraken                                                                | Alleen crew, 500 tekens, serverfrequentielimiet, idempotente retry, eigen verwijderen met rollback                          |
+| Meldingen                   | Ontbraken                                                                | Belletje, unread counters, eigen persistent read-state, paginering; uitsluitend challengegegevens                           |
+| Leaderboard                 | Server-side scores werkten                                               | Bestaande awards/filters behouden, realtime herlezing na stemmen, geen optimistische punten                                 |
+| Instellingen/privacy        | Bestaande dataverwijdering inclusief media                               | Behouden en uitgebreid met reacties, meldingen en feeststatus; accountwissels wissen gevoelige schermdata                   |
+| Crewbeheer/uitnodigingen    | Bestaande admin-/membergrenzen werkten                                   | Behouden; dezelfde configureerbare reviewdrempel wordt in Feed getoond                                                      |
+| Check-ins                   | Bestaande afzonderlijke deelkeuze                                        | Behouden, uitgesloten van sociale meldingen                                                                                 |
+| Touch/landscape/toetsenbord | Safe-area onder al aanwezig; modals centraal                             | Vijf vaste tabs, safe areas aan vier kanten, visualViewport-sheets, 44px targets, geen inputzoom, geen horizontale overflow |
+| Beweging/trage verbinding   | Voorheen beperkt voorspelbare laadtoestanden                             | Subtiele press-/sheetfeedback, skeletons met vaste media-afmetingen, reduced-motion; geen automatische background uploads   |
+
+Realtime draagt uitsluitend bestaande geschoonde invalidaties. Foto-/videolinks blijven privé en kortlevend; eerder geopende links zijn niet onmiddellijk intrekbaar. UI-fouten worden getoond en serverrechten blijven leidend.

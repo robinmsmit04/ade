@@ -41,7 +41,7 @@ npm run test:integration
 npm run test:e2e
 ```
 
-De integratiesuite maakt vier tijdelijke accounts, twee crews en testmedia aan en verwijdert eigen fixtures na afloop. Bij vroegtijdig afbreken kunnen fixtures achterblijven. Gebruik dus altijd een aparte testomgeving. Externe testprojecten vereisen daarnaast expliciet `ALLOW_REMOTE_TESTS=yes` en uitgeschakelde e-mailbevestiging voor die wegwerpprojecten.
+De integratiesuites maken tijdelijke accounts, crews en testmedia aan en verwijderen eigen fixtures na afloop. Bij vroegtijdig afbreken kunnen fixtures achterblijven. Gebruik dus altijd een aparte testomgeving. Externe testprojecten vereisen daarnaast expliciet `ALLOW_REMOTE_TESTS=yes` en uitgeschakelde e-mailbevestiging voor die wegwerpprojecten.
 
 ## 5. Kleine fallback voor deze cloudhost
 
@@ -89,7 +89,7 @@ Sla externe geheimen uitsluitend op in de instellingen van de betreffende dienst
 
 ## Bestaande installatie omzetten naar één gezamenlijk platform
 
-Open in het bestaande Supabase-project **SQL Editor → New query**. Kopieer het volledige bestand `docs/enable-shared-platform.sql` via GitHub **Copy raw file**, plak het, zorg dat er geen gedeeltelijke selectie actief is en klik **Run**. Verwacht: **Automatisch aansluiten ingesteld**. Dit is alleen de nieuwe derde migratie; voer de volledige oorspronkelijke installatie niet opnieuw uit. Nieuwe installaties gebruiken het bijgewerkte volledige `docs/supabase-setup.sql` of de vier CLI-migraties in volgorde.
+Open in het bestaande Supabase-project **SQL Editor → New query**. Kopieer het volledige bestand `docs/enable-shared-platform.sql` via GitHub **Copy raw file**, plak het, zorg dat er geen gedeeltelijke selectie actief is en klik **Run**. Verwacht: **Automatisch aansluiten ingesteld**. Dit is alleen de nieuwe derde migratie; voer de volledige oorspronkelijke installatie niet opnieuw uit. Nieuwe installaties gebruiken het bijgewerkte volledige `docs/supabase-setup.sql` of alle CLI-migraties in volgorde.
 
 De update voegt alle bestaande bevestigde accounts toe aan één omgeving, schrijft toekomstige accounts in zodra hun e-mail bevestigd is en herstelt ontbrekende inschrijving bij inloggen. Deeltoestemming staat standaard uit en wordt bij herhaald inloggen niet overschreven. Oude privécrewgegevens blijven op hun oorspronkelijke plek en worden niet automatisch in het gezamenlijke platform getoond. Vercel hoeft geen extra variabele of groeps-ID te krijgen. De GitHub-gekoppelde deployment bouwt de gewijzigde interface; open daarna de gebruikelijke website en log opnieuw in.
 
@@ -111,3 +111,15 @@ Deze stap veronderstelt dat migraties 001, 002 en 003 al zijn uitgevoerd. Open [
 Dit voegt de private profielfotobucket, profiel-/onboardingvelden, gecontroleerde profielfuncties en RLS-respecterende historische filters/samenvattingen toe. Bestaande bevestigde accounts worden gemarkeerd als voltooid en houden toegang tot de gezamenlijke omgeving. Bestaande registraties, challenges en toestemmingen blijven behouden. Nieuwe accounts kiezen na hun naam en optionele foto hoe ze verdergaan. Foto’s kunnen later via **Mijn profiel → Instellingen & privacy** worden aangepast.
 
 De GitHub-gekoppelde Vercel-build gebruikt dezelfde twee publieke omgevingsvariabelen. Controleer in **Vercel → ade → Deployments** dat de nieuwe main-build **Ready** is. Controleer daarna de gewone productie-URL met twee accounts: Home, naam/foto, snelle registratie, Tijdlijn-filters, delen/intrekken, Crew en de challenge-subnavigatie. De cloudomgeving heeft geen hosted beheerrechten; het uitvoeren van deze SQL en het resultaat van de publieke deployment zijn niet vanuit hier bevestigd.
+
+## V3: sociale feed en feest afronden
+
+Voor een bestaande installatie met migraties 001–004: open [docs/enable-social-v3.sql](docs/enable-social-v3.sql) op GitHub, klik **Copy raw file** en ga naar het bestaande project op **supabase.com/dashboard → SQL Editor → New query**. Plak het volledige bestand, hef tekstselecties op en klik **Run**. Verwacht **Crew Control V3 ingesteld**. Dit voert migraties 005 en 006 in één transactie uit. Voer het eenmaal uit; herhaal eerdere installatiebestanden niet. Als migratie 004 nog ontbreekt, voer eerst uitsluitend de V2-update uit.
+
+De update bewaart alle bestaande accounts, records, toestemmingen, inzendingen en punten. Nieuwe tabellen zijn `submission_comments`, `social_notifications` en `party_state`, alle met RLS. Bestaande reviews/awards/RPC’s blijven de autoriteit. Er komen geen service-role keys, nieuwe omgevingsvariabelen of extra realtime-publicaties bij: uitsluitend `activity` wordt als bestaande invalidatiestroom gebruikt. De private bucket `crew-evidence` blijft ongewijzigd.
+
+Controleer **Vercel → ade → Deployments** op de laatste main-commit en **Ready**. Open de gewone productie-URL, test met drie accounts: upload → Feed op beide andere apparaten → twee stemmen → melding bij de auteur → één award → album. Test een reactie en verwijderen, terugknop en fullscreen, en **Feest afronden → herladen → Nieuw feest starten**. Historie en deelkeuzes moeten behouden blijven. Een ander crewaccount mag geen records, reacties, meldingen of nieuwe medialinks kunnen uitlezen.
+
+De gedeelde omgeving kent nieuwe accounts standaard memberrechten toe. Beoordelen kan als gewoon lid. Voor challengebeheer en de drempel is expliciet toegewezen admin nodig; maak jezelf niet opnieuw beheerder via de client. Voor een privécrew is de maker beheerder. De standaard reviewdrempel blijft twee unieke andere leden; stel die via Crewbeheer op één in voor een crew met twee personen.
+
+Kortlevende medialinks blijven tot maximaal 60 seconden bruikbaar na uitgifte. De app controleert lidmaatschap opnieuw bij openen, focus en periodiek. Een mislukte validatie verwijdert de media uit de interface; eerder bekeken informatie kan niet worden teruggehaald. Meldingen tonen maximaal de geladen pagina, met **Eerdere meldingen**; markeren geldt uitsluitend voor getoonde eigen meldingen.

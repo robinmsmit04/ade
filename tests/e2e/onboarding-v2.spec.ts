@@ -88,7 +88,7 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
     await expect(
       page.locator(".last-registration").getByText("SOS", { exact: true }),
     ).toBeVisible();
-    await expect(page.locator(".elapsed-big")).toContainText("0 min");
+    await expect(page.locator(".elapsed-big")).toContainText(/^[01] min/);
     const nav = page.getByRole("navigation", {
       name:
         page.viewportSize()!.width < 700
@@ -145,6 +145,53 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
       .single();
     expect(savedProfile.data?.avatar_path).toMatch(/\.jpg$/);
     expect(savedProfile.data?.onboarding_completed_at).toBeTruthy();
+    await page
+      .getByRole("button", { name: "Feest afronden", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Feest afronden", exact: true })
+      .click();
+    await expect(
+      page
+        .locator(".last-registration")
+        .getByRole("heading", { name: "Feest afgerond." }),
+    ).toBeVisible();
+    await expect(page.locator(".elapsed-big")).toHaveCount(0);
+    await page.reload();
+    await expect(
+      page
+        .locator(".last-registration")
+        .getByRole("heading", { name: "Feest afgerond." }),
+    ).toBeVisible();
+    await nav.getByRole("button", { name: "Tijdlijn", exact: true }).click();
+    await expect(
+      page.locator(".feed-row").filter({ hasText: "SOS" }),
+    ).toHaveCount(1);
+    await nav.getByRole("button", { name: "Home", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Nieuw feest starten", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Nieuw feest starten", exact: true })
+      .click();
+    await expect(
+      page.locator(".last-registration").getByText("Nog niets vastgelegd."),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Nieuwe registratie", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /Joint/ })
+      .click();
+    await page
+      .getByRole("button", { name: "Registratie opslaan", exact: true })
+      .click();
+    await expect(
+      page.locator(".last-registration").getByText("Joint", { exact: true }),
+    ).toBeVisible();
     await page.screenshot({
       path:
         "test-results/v2-home-" +

@@ -6,17 +6,37 @@ export function Dialog({
   title,
   close,
   children,
+  fullscreen = false,
 }: {
   title: string;
   close: () => void;
   children: React.ReactNode;
+  fullscreen?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const onClose = useEffectEvent(close);
   useEffect(() => {
+    const dialogId = crypto.randomUUID();
+    history.pushState({ ...history.state, crewDialog: dialogId }, "");
+    let popped = false;
+    const back = () => {
+      if (history.state?.crewDialog !== dialogId) {
+        popped = true;
+        onClose();
+      }
+    };
+    window.addEventListener("popstate", back);
     const previous = document.activeElement as HTMLElement;
     const node = ref.current;
-    node?.focus();
+    node?.focus({ preventScroll: true });
+    const viewport = window.visualViewport;
+    const resize = () =>
+      document.documentElement.style.setProperty(
+        "--keyboard-height",
+        `${viewport?.height || window.innerHeight}px`,
+      );
+    resize();
+    viewport?.addEventListener("resize", resize);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function key(e: KeyboardEvent) {
@@ -40,9 +60,13 @@ export function Dialog({
     }
     document.addEventListener("keydown", key);
     return () => {
+      viewport?.removeEventListener("resize", resize);
+      document.documentElement.style.removeProperty("--keyboard-height");
+      window.removeEventListener("popstate", back);
+      if (!popped && history.state?.crewDialog === dialogId) history.back();
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", key);
-      previous?.focus();
+      previous?.focus({ preventScroll: true });
     };
   }, []);
   return (
@@ -50,7 +74,7 @@ export function Dialog({
       <section
         ref={ref}
         tabIndex={-1}
-        className="dialog"
+        className={`dialog ${fullscreen ? "fullscreen-dialog" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

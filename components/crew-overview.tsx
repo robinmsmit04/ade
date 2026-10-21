@@ -12,6 +12,7 @@ export function CrewOverview({
   members,
   profiles,
   summaries,
+  parties = [],
   uid,
   open,
   compact = false,
@@ -20,6 +21,7 @@ export function CrewOverview({
   members: Member[];
   profiles: Profile[];
   summaries: CrewSummary[];
+  parties?: { user_id: string; ended_at: string | null }[];
   uid: string;
   open: (id: string) => void;
   compact?: boolean;
@@ -40,6 +42,9 @@ export function CrewOverview({
       {people.slice(0, compact ? 6 : undefined).map((member) => {
         const profile = profiles.find((p) => p.id === member.user_id);
         const summary = summaries.find((s) => s.user_id === member.user_id);
+        const ended = parties.find(
+          (p) => p.user_id === member.user_id,
+        )?.ended_at;
         return (
           <button
             key={member.user_id}
@@ -60,7 +65,13 @@ export function CrewOverview({
                 <>
                   <span className="person-latest">
                     {summary.last_substance}
-                    <span> · {elapsed(summary.last_taken_at)} geleden</span>
+                    <span>
+                      {" "}
+                      ·{" "}
+                      {ended
+                        ? "Feest afgerond"
+                        : `${elapsed(summary.last_taken_at)} geleden`}
+                    </span>
                   </span>
                   <small>
                     <Clock size={11} />
