@@ -80,7 +80,7 @@ export function Notifications({
               <span>
                 <strong>
                   {n.kind === "approved" || n.kind === "rejected"
-                    ? "Crew Control"
+                    ? "ADE Selectie"
                     : p?.display_name || "Crewlid"}
                 </strong>
                 <span>{messages[n.kind]}</span>

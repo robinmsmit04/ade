@@ -52,15 +52,9 @@ test("Home camera preserves orientation, corrects mirrored files, retries privat
       if (r.error) throw r.error;
       ids.push(r.data.user!.id);
     }
-    const created = await cs[0].rpc("create_crew", {
-      crew_name: "Camera fixtures",
-    });
-    if (created.error) throw created.error;
-    cid = created.data;
-    const invite = await cs[0].rpc("create_invite", { cid });
-    if (invite.error) throw invite.error;
-    const joined = await cs[1].rpc("join_crew", { token: invite.data });
-    if (joined.error) throw joined.error;
+    const community = await cs[0].rpc("ensure_community_membership");
+    if (community.error) throw community.error;
+    cid = community.data;
     for (let i = 0; i < 2; i++) {
       const r = await cs[i].rpc("save_my_profile", {
         nickname: i === 0 ? "Camera eigenaar" : "Privé deelnemer",
@@ -197,7 +191,8 @@ test("Home camera preserves orientation, corrects mirrored files, retries privat
     const submissions = await cs[0]
       .from("submissions")
       .select("file_path,mime_type")
-      .eq("crew_id", cid);
+      .eq("crew_id", cid)
+      .eq("user_id", ids[0]);
     expect(submissions.data).toHaveLength(1);
     expect(submissions.data![0].mime_type).toBe("image/jpeg");
     expect(submissions.data![0].file_path).toBe(orphan.data[0]);

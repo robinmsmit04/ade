@@ -41,6 +41,7 @@ import { EvidenceUpload } from "@/components/evidence-upload";
 import { Avatar } from "@/components/avatar";
 import { Dialog as Modal } from "@/components/dialog";
 import { QuickRecord } from "@/components/quick-record";
+import { SelectionHome } from "@/components/selection/selection-home";
 import { ProfileSetup } from "@/components/profile-setup";
 import { CrewOverview } from "@/components/crew-overview";
 import { Button } from "@/components/ui/button";
@@ -180,6 +181,8 @@ export function CrewApp() {
   const uid = session?.user.id || "";
   const social = useSocial(cid, uid, tab === "review");
   const crew = crews.find((c) => c.id === cid);
+  const teamName =
+    cid === communityId ? "ADE Selectie" : crew?.name || "ADE Selectie";
   const admin = members.some((m) => m.user_id === uid && m.role === "admin");
   const name = (id: string) =>
     profiles.find((p) => p.id === id)?.display_name ||
@@ -617,7 +620,7 @@ export function CrewApp() {
       <main
         className="auth stack"
         role="status"
-        aria-label="Crew Control laden"
+        aria-label="ADE Selectie laden"
       >
         <div className="skeleton skeleton-line" />
         <div className="card stack">
@@ -657,7 +660,7 @@ export function CrewApp() {
     return (
       <main className="onboarding-shell">
         <div className="brand">
-          <span className="brand-mark">cc</span> CREW CONTROL
+          <span className="brand-mark">as</span> ADE SELECTIE
         </div>
         <ProfileSetup profile={selfProfile} onSaved={loadCrews} />
       </main>
@@ -667,7 +670,7 @@ export function CrewApp() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">cc</span> CREW CONTROL
+          <span className="brand-mark">as</span> ADE SELECTIE
         </div>
         <div className="mt-6">
           <span className="pill">
@@ -713,11 +716,11 @@ export function CrewApp() {
       <main className="main">
         <header className="topbar">
           <div className="flex items-center gap-3">
-            <span className="brand-mark md:hidden">cc</span>
+            <span className="brand-mark md:hidden">as</span>
             <div>
               <p className="eyebrow">ADE · SAMEN OP PAD</p>
               <p className="text-sm font-bold mt-2">
-                {crew?.name || "Crew Control"}{" "}
+                {teamName}{" "}
                 <ArrowUpRight
                   size={13}
                   className="inline text-lime-300"
@@ -849,6 +852,43 @@ export function CrewApp() {
                   {connected ? "Live" : "Verbinden"}
                 </span>
               </header>
+              <div className="home-primary-actions">
+                <Button
+                  className="home-register"
+                  onClick={() =>
+                    partyEnded ? setPartyDialog("start") : newRecord()
+                  }
+                  disabled={configured && (!cid || loading)}
+                >
+                  <Plus size={22} />
+                  {partyEnded ? "Nieuw feest starten" : "Nieuwe registratie"}
+                </Button>
+                <Button
+                  className="home-camera"
+                  variant="secondary"
+                  aria-label="Foto maken"
+                  disabled={!uid || !cid || loading}
+                  onClick={() => {
+                    setPhotoChallenge(
+                      photoChallenges.find((c) => c.title === "Crew in beeld")
+                        ?.id ||
+                        photoChallenges[0]?.id ||
+                        "",
+                    );
+                    setHomeCameraLive(true);
+                    setHomeCameraOpen(true);
+                  }}
+                >
+                  <Camera size={25} />
+                </Button>
+              </div>
+              <SelectionHome
+                key={`${cid}:${uid}`}
+                cid={cid}
+                uid={uid}
+                profiles={profiles}
+                members={members}
+              />
               <div className="last-registration">
                 <div className="flex items-center justify-between gap-3">
                   <span className="eyebrow">JOUW LAATSTE REGISTRATIE</span>
@@ -885,36 +925,6 @@ export function CrewApp() {
                 <p className="historical-note">
                   Historische informatie · geen advies over (her)gebruik
                 </p>
-              </div>
-              <div className="home-primary-actions">
-                <Button
-                  className="home-register"
-                  onClick={() =>
-                    partyEnded ? setPartyDialog("start") : newRecord()
-                  }
-                  disabled={configured && (!cid || loading)}
-                >
-                  <Plus size={22} />
-                  {partyEnded ? "Nieuw feest starten" : "Nieuwe registratie"}
-                </Button>
-                <Button
-                  className="home-camera"
-                  variant="secondary"
-                  aria-label="Foto maken"
-                  disabled={!uid || !cid || loading}
-                  onClick={() => {
-                    setPhotoChallenge(
-                      photoChallenges.find((c) => c.title === "Crew in beeld")
-                        ?.id ||
-                        photoChallenges[0]?.id ||
-                        "",
-                    );
-                    setHomeCameraLive(true);
-                    setHomeCameraOpen(true);
-                  }}
-                >
-                  <Camera size={25} />
-                </Button>
               </div>
               {!partyEnded && uid && (
                 <button
@@ -966,7 +976,7 @@ export function CrewApp() {
             <section className="stack">
               <div className="section-title">
                 <div>
-                  <p className="eyebrow mb-2">{crew?.name || "JOUW MENSEN"}</p>
+                  <p className="eyebrow mb-2">{teamName}</p>
                   <h1>
                     De crew<span className="text-lime-300">.</span>
                   </h1>
@@ -1527,9 +1537,9 @@ export function CrewApp() {
                   Privacy in jouw handen
                 </h2>
                 <p className="text-sm muted leading-6">
-                  Delen geeft huidige en toekomstige leden van{" "}
-                  {crew?.name || "deze crew"} toegang tot je volledige historie
-                  binnen deze crew, inclusief hoeveelheden en opmerkingen.{" "}
+                  Delen geeft huidige en toekomstige leden van {teamName}{" "}
+                  toegang tot je volledige historie binnen deze crew, inclusief
+                  hoeveelheden en opmerkingen.{" "}
                   {cid === communityId
                     ? "In de gezamenlijke omgeving kan iedereen met een bevestigd account deelnemen. "
                     : ""}
@@ -1567,7 +1577,7 @@ export function CrewApp() {
                       );
                     }}
                   />
-                  Deel mijn registraties met {crew?.name || "Crew Control"}
+                  Deel mijn registraties met {teamName}
                 </label>
                 <p className="text-xs muted">
                   Check-ins hebben per bericht een eigen deelkeuze. Uploads
@@ -1852,8 +1862,8 @@ export function CrewApp() {
           )}
         </div>
         <footer className="flex items-center gap-2 text-[10px] muted mt-9 pt-5 border-t border-[#2b3025]">
-          <Shield size={12} /> PRIVÉCREW · JOUW DATA, JOUW KEUZE{" "}
-          <span className="ml-auto">CREW CONTROL / ADE</span>
+          <Shield size={12} /> SELECTIE · JOUW DATA, JOUW KEUZE{" "}
+          <span className="ml-auto">ADE SELECTIE / 3–0–3</span>
         </footer>
       </main>
       <nav className="bottom-nav" aria-label="Mobiele navigatie">
@@ -1936,7 +1946,7 @@ export function CrewApp() {
               />
               <div>
                 <h3>{selfProfile?.display_name || "Jouw account"}</h3>
-                <p className="muted text-xs">{crew?.name || "Crew Control"}</p>
+                <p className="muted text-xs">{teamName}</p>
               </div>
             </div>
             {[

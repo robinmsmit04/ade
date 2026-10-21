@@ -1,4 +1,4 @@
-# Crew Control op je eigen domein, met eigen e-mail en een schone start
+# ADE Selectie op je eigen domein, met eigen e-mail en een schone start
 
 Deze handleiding gaat uit van je bestaande GitHub-repository, Vercel-project **ade** en Supabase-project. Je hoeft geen nieuwe applicatie of database aan te maken. De accounts blijven behouden. De hosted wijzigingen en opschoning zijn nog niet namens jou uitgevoerd: deze cloudomgeving heeft geen beheerverbinding met jouw accounts.
 
@@ -8,7 +8,7 @@ Gebruik in de voorbeelden deze namen en vervang `jouwdomein.nl` door je echte do
 | --------------------------------------- | ------------------------------------------- |
 | Publieke website en deel-URL            | `https://app.jouwdomein.nl`                 |
 | Geverifieerd verzenddomein              | `auth.jouwdomein.nl`                        |
-| Afzender van bevestigings-/herstelmails | `Crew Control <noreply@auth.jouwdomein.nl>` |
+| Afzender van bevestigings-/herstelmails | `ADE Selectie <noreply@auth.jouwdomein.nl>` |
 
 Je domeinprovider beheert DNS. Vercel serveert de app. Supabase bewaart accounts/data en verstuurt Auth-mails via de mailprovider. In deze handleiding is die provider Resend. In-app challengemeldingen blijven in de app.
 
@@ -21,7 +21,7 @@ Je domeinprovider beheert DNS. Vercel serveert de app. Supabase bewaart accounts
 5. Ga naar de website van je domeinprovider → jouw domein → **DNS / DNS records / DNS beheren**.
 6. Voeg het record uit Vercel toe. Voor dit subdomein is dat meestal een **CNAME** met naam/host **app** en het exact getoonde doel. Kies de standaard/automatische TTL. Gebruik bij de host de notatie die je provider vraagt; veel providers vullen `.jouwdomein.nl` zelf aan.
 7. Ga terug naar Vercel en klik **Refresh / Verify** totdat **Valid Configuration** verschijnt. DNS-verwerking kan enige tijd kosten. Vercel regelt daarna het HTTPS-certificaat.
-8. Open `https://app.jouwdomein.nl`. Je moet Crew Control zien met een geldig certificaat.
+8. Open `https://app.jouwdomein.nl`. Je moet ADE Selectie zien met een geldig certificaat.
 
 Heb je al een DNS-record voor `app`, pas dat bestaande record aan naar de waarde van Vercel. Voeg niet twee verschillende CNAME-doelen voor dezelfde host toe. Als je Cloudflare gebruikt, kun je het nieuwe record tijdens deze configuratie op **DNS only** zetten.
 
@@ -32,7 +32,7 @@ De Supabase-project-URL en publieke sleutel in Vercel blijven dezelfde. Ze verwi
 1. Ga in Vercel naar **ade → Settings → Deployment Protection**.
 2. Controleer **Vercel Authentication**. De vaste **Production**-website moet zonder Vercel-login toegankelijk zijn. Kies bijvoorbeeld **Standard Protection** als die Production-domeinen publiek laat en previews beschermt. Beveiliging voor alle deployments of een Production-wachtwoord mag de gedeelde website niet blokkeren.
 3. Open **Deployments** en controleer of de nieuwste main-deployment **Ready** is en **Production** gebruikt.
-4. Open je nieuwe vaste domein in een privé-/incognitovenster. Je moet meteen Crew Control-login/registratie zien.
+4. Open je nieuwe vaste domein in een privé-/incognitovenster. Je moet meteen ADE Selectie-login/registratie zien.
 
 Deel straks `https://app.jouwdomein.nl`. Je hoeft de unieke deployment-URL niet als vaste deel-URL te gebruiken.
 
@@ -45,21 +45,21 @@ Je hebt aangegeven dat custom SMTP nog uitstaat en je een eigen domein hebt. Dit
 3. Vul `auth.jouwdomein.nl` in. Kies een Europese regio als die beschikbaar is.
 4. Resend toont DNS-records voor het verzenden. Voeg elk vereist record toe bij dezelfde domeinprovider. Kopieer **Type**, **Name/Host**, **Value/Content** en eventuele **Priority** exact. De waarden verschillen per domein.
 5. Ga terug naar Resend en klik **Verify DNS Records**. Wacht totdat het domein **Verified** is.
-6. Open **API Keys → Create API Key**. Noem deze bijvoorbeeld **Crew Control Auth** en geef verzendrechten voor dit geverifieerde domein.
+6. Open **API Keys → Create API Key**. Noem deze bijvoorbeeld **ADE Selectie Auth** en geef verzendrechten voor dit geverifieerde domein.
 7. Bewaar de sleutel veilig. Deze komt uitsluitend in het SMTP-wachtwoordveld van Supabase.
 
 De DNS-records uit Resend staan naast het CNAME-record voor `app`. Ze dienen verschillende doelen. Laat de bestaande mailinstellingen voor je hoofddomein intact; voeg de door Resend gevraagde records voor het nieuwe verzendsubdomein toe.
 
 ## 4. Supabase met Resend laten mailen
 
-1. Ga naar [supabase.com/dashboard](https://supabase.com/dashboard), open het bestaande Crew Control-project.
+1. Ga naar [supabase.com/dashboard](https://supabase.com/dashboard), open het bestaande ADE Selectie-project.
 2. Open **Authentication → Emails → SMTP Settings** en zet **Enable custom SMTP** aan.
 3. Vul het volgende in:
 
 | Veld         | Waarde                       |
 | ------------ | ---------------------------- |
 | Sender email | `noreply@auth.jouwdomein.nl` |
-| Sender name  | `Crew Control`               |
+| Sender name  | `ADE Selectie`               |
 | Host         | `smtp.resend.com`            |
 | Port         | `465`                        |
 | Username     | `resend`                     |
@@ -126,7 +126,7 @@ Doe dit pas nadat de proefronde geslaagd is en vóór je de link breed deelt. De
 5. Verwacht:
 
 ```text
-Crew Control opgeschoond; accounts behouden
+ADE Selectie opgeschoond; accounts behouden
 ```
 
 De velden `registraties`, `inzendingen`, `puntenregels` en `challengebestanden` moeten 0 zijn. Accounts, profielen en challenges blijven aanwezig. Het script breekt vóór het wissen af als er nog challengebestanden zijn of de vereiste V3-update ontbreekt.
@@ -144,11 +144,11 @@ Herlaad de nieuwe website of log opnieuw in. Controleer zonder nieuwe testinhoud
 - De challengeranglijst heeft geen punten en de registratieranglijst heeft geen momenten.
 - De gewone challenges staan nog klaar.
 - Je eigen account en profielfoto zijn behouden.
-- Een privévenster toont de publieke Crew Control-login, geen Vercel-login.
+- Een privévenster toont de publieke ADE Selectie-login, geen Vercel-login.
 
 Daarna kun je dit bericht delen, met jouw echte domein:
 
-> Crew Control staat klaar: https://app.jouwdomein.nl
+> ADE Selectie staat klaar: https://app.jouwdomein.nl
 >
 > Maak een account, bevestig je e-mail en vul je naam in. Je komt automatisch in onze groep. Je kunt je naam en eventueel een foto toevoegen. Registraties zijn standaard privé; je kiest zelf of je ze deelt. Fotochallenges en de Feed zijn voor onze gezamenlijke groep.
 

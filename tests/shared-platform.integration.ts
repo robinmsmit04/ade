@@ -96,13 +96,11 @@ describe.sequential(
     it("keeps new personal registrations private to the author", async () => {
       record = crypto.randomUUID();
       await checked(
-        clients[0]
-          .from("records")
-          .insert({
-            id: record,
-            crew_id: community,
-            substance: "Private shared-platform fixture",
-          }),
+        clients[0].from("records").insert({
+          id: record,
+          crew_id: community,
+          substance: "Private shared-platform fixture",
+        }),
       );
       expect(
         (await clients[0].from("records").select("*").eq("id", record)).data,
@@ -178,6 +176,12 @@ describe.sequential(
       ).toEqual([]);
     });
     it("reuses one challenge set and one membership during parallel enrollment retries", async () => {
+      const before = await clients[0]
+        .from("challenges")
+        .select("id")
+        .eq("crew_id", community)
+        .order("id");
+      if (before.error) throw before.error;
       const results = await Promise.all(
         Array.from({ length: 5 }, () =>
           clients[0].rpc("ensure_community_membership"),
@@ -202,8 +206,9 @@ describe.sequential(
             .from("challenges")
             .select("id")
             .eq("crew_id", community)
+            .order("id")
         ).data,
-      ).toHaveLength(20);
+      ).toEqual(before.data);
     });
   },
 );

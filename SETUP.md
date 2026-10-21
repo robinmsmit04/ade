@@ -133,3 +133,7 @@ Bij een challengefout staat nu in het formulier of **Upload mislukt** (Storage) 
 ## Livegang op eigen domein
 
 De volledige dashboardhandleiding staat in [docs/DOMEIN-EN-LIVEGANG.md](docs/DOMEIN-EN-LIVEGANG.md). Die behandelt Vercel/DNS, Resend met een eigen verzendsubdomein, Supabase SMTP/Auth-redirects, proefronde, de eenmalige opschoning en de eindcontrole. Het opschoonbestand staat buiten migrations en wordt nooit automatisch uitgevoerd.
+
+## ADE Selectie: officiële opstelling en kleedkamer
+
+Voor bestaande databases met 001 t/m 006: voer het volledige [docs/enable-ade-selection.sql](docs/enable-ade-selection.sql) eenmalig uit in **Supabase → SQL Editor → New query → Run**. Verwacht **ADE Selectie ingesteld**. Geen extra omgevingsvariabelen of Storage-buckets nodig. Zie [docs/ADE-SELECTIE.md](docs/ADE-SELECTIE.md) voor het expliciet aanwijzen van jouw account als exclusieve opstellingsbeheerder, spelers koppelen en de Vercel-uitrol controleren. Lucas is bondscoach als presentatie; hij hoeft geen account te hebben. Namen of aanmeldgegevens geven nooit opstellingsbeheerrechten.

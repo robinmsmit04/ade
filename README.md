@@ -1,8 +1,12 @@
-# Crew Control
+# ADE Selectie
 
-Mobiele app voor één gezamenlijke Crew Control-omgeving tijdens Amsterdam Dance Event. Iedereen kan via dezelfde URL een account aanmaken en na e-mailbevestiging automatisch deelnemen. Donkere festivalstijl, lime accenten en een navigatie voor bediening met één hand. Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui Button, Supabase Auth/PostgreSQL/Realtime/Storage, Zod, React Hook Form, Vitest en Playwright.
+Mobiele app voor de gezamenlijke ADE Selectie tijdens Amsterdam Dance Event. Iedereen kan via dezelfde URL een account aanmaken en na e-mailbevestiging automatisch deelnemen. Donkere festivalstijl, lime accenten en een navigatie voor bediening met één hand. Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui Button, Supabase Auth/PostgreSQL/Realtime/Storage, Zod, React Hook Form, Vitest en Playwright.
 
 Lees [Domein en livegang](docs/DOMEIN-EN-LIVEGANG.md) voor je eigen domein, bevestigingsmails, opschonen met behoud van accounts en de controle vóór delen met vrienden.
+
+De interactieve **3-0-3-opstelling met keeper** staat op Home: zeven accountgekoppelde spelers met eigen profielfoto, naam, bijnaam en rugnummer. Alleen de aangewezen opstellingsbeheerder verdeelt de posities en publiceert namens bondscoach Lucas wedstrijdverslagen in de kleedkamer. Spelersprofielen tonen challengepunten, foto's en vrijwillig gedeelde geschiedenis. Registratie en camera blijven bereikbaar tijdens scrollen.
+
+**Bestaande installatie:** voer eenmalig [docs/enable-ade-selection.sql](docs/enable-ade-selection.sql) uit na migraties 001 t/m 006. Lees [ADE Selectie installeren](docs/ADE-SELECTIE.md) voor jouw exclusieve beheerrechten, de spelers koppelen en controle vóór delen.
 
 ## Starten
 
@@ -24,7 +28,7 @@ Lees [SETUP.md](SETUP.md) voor database, e-mailbevestiging, lokale integratietes
 ## Gebruik
 
 1. Registreer een account en bevestig de e-mail (bij hosted Supabase).
-2. Nieuwe accounts vullen een naam in en kunnen optioneel een profielfoto uploaden of maken. Daarna kom je automatisch in de gezamenlijke Crew Control-groep, zonder keuzescherm of uitnodiging. Bestaande accounts slaan onboarding over. De gezamenlijke omgeving bevat 20 challenges, verdeeld over DGTL en KI/KI.
+2. Nieuwe accounts vullen een naam in en kunnen optioneel een profielfoto uploaden of maken. Daarna kom je automatisch in de gezamenlijke ADE Selectie-groep, zonder keuzescherm of uitnodiging. Bestaande accounts slaan onboarding over. De gezamenlijke omgeving bevat 20 challenges, verdeeld over DGTL en KI/KI.
 3. Home toont je laatste historische registratie en de grote knop **Nieuwe registratie**. Kies een label en bevestig; hoeveelheid en opmerking zijn optioneel. **Tijdlijn** biedt dag- en middelfilters, corrigeren en verwijderen. **Crew** toont uitsluitend toegestane gedeelde gegevens. Onder **Ranglijst registratiemomenten** staan de aantallen aflopend, met festivaldag- en labelfilter; registraties leveren geen punten op.
 4. De cameraknop naast Nieuwe registratie opent de camera. Leg een foto vast, controleer de preview en koppel hem aan een beschikbare challenge. Nieuwe camerafoto’s krijgen geen automatische spiegeling; **Spiegelen corrigeren** kan een al gespiegeld bestand herstellen. Camera en bibliotheek zijn ook bij challengebewijs en profielfoto beschikbaar.
 5. Rond je avond af via **Feest afronden** op Home. De teller verdwijnt en je historie blijft intact. **Nieuw feest starten** begint een leeg persoonlijk registratieblok; het sluit niets voor anderen af en zegt niets over effecten of veiligheid.

@@ -1,9 +1,9 @@
 -- Crew Control: alle gebruiks-/testgegevens wissen, accounts en inrichting behouden.
 -- Eenmalig als projecteigenaar uitvoeren vóór je vrienden de app gebruiken.
 -- BLIJFT: Auth-accounts, profielen/profielfoto's, crews, leden/rollen, challenges,
--- templates, schema, RLS, omgevingsinstellingen en gezamenlijke toegang.
+-- templates, opstelling/opstellingsbeheer, schema, RLS, omgevingsinstellingen en gezamenlijke toegang.
 -- WEG: registraties, check-ins, ingezonden media, stemmen, punten, reacties,
--- meldingen, feeststatus en uitnodigingslinks. Delen wordt privé.
+-- meldingen, feeststatus, wedstrijdverslagen en uitnodigingslinks. Delen wordt privé.
 -- EERST via Supabase Storage de inhoud van uitsluitend crew-evidence verwijderen.
 -- Nooit storage.objects via SQL leegmaken: echte bestanden via Storage verwijderen.
 BEGIN;
@@ -26,6 +26,14 @@ END $$;
 LOCK TABLE public.records,public.checkins,public.submissions,public.reviews,
  public.awards,public.submission_comments,public.social_notifications,
  public.party_state,public.invites,public.consents,public.activity IN SHARE ROW EXCLUSIVE MODE;
+
+-- Also reset reports when the optional ADE Selectie upgrade is installed.
+DO $$ BEGIN
+ IF to_regclass('public.match_reports') IS NOT NULL THEN
+  LOCK TABLE public.match_reports IN SHARE ROW EXCLUSIVE MODE;
+  DELETE FROM public.match_reports;
+ END IF;
+END $$;
 
 DELETE FROM public.submission_comments;
 DELETE FROM public.social_notifications;

@@ -106,12 +106,14 @@ export function AuthForm() {
   return (
     <div className="auth">
       <div className="brand">
-        <span className="brand-mark">cc</span> CREW CONTROL
+        <span className="brand-mark">as</span> ADE SELECTIE
       </div>
       <div className="card stack">
-        <span className="eyebrow">CREW CONTROL · ADE</span>
+        <span className="eyebrow">ADE SELECTIE · 3–0–3</span>
         <h1>
-          {mode === "signup" ? "Welkom bij de crew." : "Terug bij je crew."}
+          {mode === "signup"
+            ? "Welkom bij de selectie."
+            : "Terug bij de selectie."}
         </h1>
         <p className="muted text-sm leading-6">
           Maak een account, bevestig je e-mail en doe mee. Iedereen met deze

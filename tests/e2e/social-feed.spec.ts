@@ -1,3 +1,4 @@
+import { localAdmin, localDeleteChallenge } from "../helpers/local-admin";
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 const url = process.env.TEST_SUPABASE_URL,
@@ -20,6 +21,8 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
   const contexts = [];
   const pages: Page[] = [];
   let cid = "";
+  let challengeId = "";
+  let restoreAdmin = () => {};
   async function nav(p: Page, label: string) {
     await p
       .getByRole("navigation", {
@@ -33,29 +36,32 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       const r = await cs[i].auth.signUp(users[i]);
       if (r.error) throw r.error;
     }
-    const crew = await cs[0].rpc("create_crew", {
-      crew_name: "V3 browser crew",
+    const community = await cs[0].rpc("ensure_community_membership");
+    if (community.error) throw community.error;
+    cid = community.data;
+    restoreAdmin = localAdmin(cid, (await cs[0].auth.getUser()).data.user!.id);
+    const removed = await cs[0].rpc("remove_member", {
+      cid,
+      uid: (await cs[3].auth.getUser()).data.user!.id,
     });
-    if (crew.error) throw crew.error;
-    cid = crew.data;
-    const invite = await cs[0].rpc("create_invite", { cid });
-    if (invite.error) throw invite.error;
-    for (const c of [cs[1], cs[2]]) {
-      const joined = await c.rpc("join_crew", { token: invite.data });
-      if (joined.error) throw joined.error;
-    }
+    if (removed.error) throw removed.error;
     const videoTitle = `Videomoment ${crypto.randomUUID().slice(0, 6)}`;
-    const challenge = await cs[0].from("challenges").insert({
-      crew_id: cid,
-      title: videoTitle,
-      description: "Een vrijwillig videomoment met je vrienden.",
-      evidence: "Een korte video met toestemming.",
-      festival: "DGTL",
-      difficulty: "Easy",
-      points: 5,
-      repeatable: true,
-    });
+    const challenge = await cs[0]
+      .from("challenges")
+      .insert({
+        crew_id: cid,
+        title: videoTitle,
+        description: "Een vrijwillig videomoment met je vrienden.",
+        evidence: "Een korte video met toestemming.",
+        festival: "DGTL",
+        difficulty: "Easy",
+        points: 5,
+        repeatable: true,
+      })
+      .select("id")
+      .single();
     if (challenge.error) throw challenge.error;
+    challengeId = challenge.data!.id;
     for (let i = 0; i < 3; i++) {
       const saved = await cs[i].rpc("save_my_profile", {
         nickname: i === 0 ? name : `Vriend ${i}`,
@@ -157,13 +163,18 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
     const posts = await cs[0]
       .from("submissions")
       .select("id")
-      .eq("crew_id", cid);
+      .eq("crew_id", cid)
+      .eq("user_id", (await cs[0].auth.getUser()).data.user!.id);
     expect(posts.data).toHaveLength(1);
     const sid = posts.data![0].id;
     expect(
       (await cs[3].from("submissions").select("*").eq("id", sid)).data,
     ).toEqual([]);
     await b.getByRole("button", { name: "Fotoalbum", exact: true }).click();
+    await b
+      .getByRole("combobox", { name: "Deelnemer", exact: true })
+      .selectOption((await cs[0].auth.getUser()).data.user!.id);
+    await expect(b.locator(".album-grid .album-item")).toHaveCount(1);
     await b
       .getByRole("button", { name: "Open media: Crew in beeld", exact: true })
       .click();
@@ -233,6 +244,10 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
     ).toBeVisible();
     await nav(a, "Feed");
     await a.getByRole("button", { name: "Fotoalbum", exact: true }).click();
+    await a
+      .getByRole("combobox", { name: "Deelnemer", exact: true })
+      .selectOption((await cs[0].auth.getUser()).data.user!.id);
+    await expect(a.locator(".album-grid .album-item")).toHaveCount(1);
     await expect(
       a
         .locator("article")
@@ -268,6 +283,10 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       )
       .toBeGreaterThan(0);
     await b.getByRole("button", { name: "Fotoalbum", exact: true }).click();
+    await b
+      .getByRole("combobox", { name: "Deelnemer", exact: true })
+      .selectOption((await cs[0].auth.getUser()).data.user!.id);
+    await expect(b.locator(".album-grid .album-item")).toHaveCount(2);
     await b
       .getByRole("button", { name: `Open media: ${videoTitle}`, exact: true })
       .click();
@@ -320,6 +339,7 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       fullPage: true,
     });
   } finally {
+    restoreAdmin();
     for (const ctx of contexts) await ctx.close();
     for (const c of [...cs].reverse()) {
       const paths = await c.rpc("my_media_paths");
@@ -332,5 +352,6 @@ test("three friends: realtime photo/video feed, reviews, replies, notifications,
       if (r.error) throw r.error;
       await c.auth.signOut();
     }
+    if (challengeId) localDeleteChallenge(cid, challengeId);
   }
 });

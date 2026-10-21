@@ -61,6 +61,9 @@ try {
   select * into ch from public.challenges where crew_id=cid limit 1;
   path:=cid::text||'/${ids[0]}/'||sid::text||'.jpg';
   insert into storage.objects(bucket_id,name) values('crew-evidence',path);
+  update public.team_settings set manager_id='${ids[0]}' where crew_id=cid;
+  update public.team_lineup set user_id='${ids[1]}',player_name='Reset retained lineup',nickname='De verdediger' where crew_id=cid and position='keeper';
+  perform public.save_match_report(cid,'Reset fixture verslag','Een tijdelijk testverslag in de databasekopie.',gen_random_uuid());
   perform public.submit_evidence(cid,ch.id,path,'image/jpeg',sid);
   perform set_config('request.jwt.claim.sub','${ids[1]}',false);
   perform public.post_submission_comment(sid,'Synthetic reset fixture',gen_random_uuid());
@@ -84,6 +87,8 @@ try {
     "public.challenges",
     "public.challenge_templates",
     "public.community_settings",
+    "public.team_settings",
+    "public.team_lineup",
   ];
   const snapshot = () =>
     sql(
@@ -125,6 +130,7 @@ try {
     "submission_comments",
     "social_notifications",
     "party_state",
+    "match_reports",
     "invites",
     "activity",
   ];

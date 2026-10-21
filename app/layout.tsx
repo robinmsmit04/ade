@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Crew Control · ADE",
-  description: "Jouw crew. Jouw weekend. Jouw regie.",
+  title: "ADE Selectie · De officiële opstelling",
+  description: "Zeven spelers. Eén selectie. Jouw ADE.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Crew Control",
+    title: "ADE Selectie",
   },
   icons: { icon: "/icon.svg", apple: "/apple-icon.png" },
 };

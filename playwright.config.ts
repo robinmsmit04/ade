@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
+  // Browser accounts share the real singleton community and its exclusive manager.
+  workers: 1,
   timeout: 30000,
   use: { baseURL: "http://localhost:3000", trace: "retain-on-failure" },
   projects: [
