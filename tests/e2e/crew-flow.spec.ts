@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 const url = process.env.TEST_SUPABASE_URL,
   key = process.env.TEST_SUPABASE_ANON_KEY;
-test("two browser sessions: invitation, private record, explicit sharing, realtime revocation and editing", async ({
+test("same public URL: automatic entry, private record, explicit sharing, realtime revocation and editing", async ({
   browser,
   baseURL,
 }, testInfo) => {
@@ -16,20 +16,14 @@ test("two browser sessions: invitation, private record, explicit sharing, realti
   const clients = users.map(() =>
     createClient(url!, key!, { auth: { persistSession: false } }),
   );
-  let cid = "";
   const contexts = [];
+  const recordName = `Browser-test ${crypto.randomUUID().slice(0, 8)}`;
+  const editedName = `Bewerkt ${crypto.randomUUID().slice(0, 8)}`;
   try {
     for (let i = 0; i < 2; i++) {
       const { error } = await clients[i].auth.signUp(users[i]);
       if (error) throw error;
     }
-    const crew = await clients[0].rpc("create_crew", {
-      crew_name: "Browser test crew",
-    });
-    if (crew.error) throw crew.error;
-    cid = crew.data;
-    const invite = await clients[0].rpc("create_invite", { cid });
-    if (invite.error) throw invite.error;
     const pages = [];
     for (let i = 0; i < 2; i++) {
       const ctx = await browser.newContext({
@@ -43,23 +37,30 @@ test("two browser sessions: invitation, private record, explicit sharing, realti
       contexts.push(ctx);
       const p = await ctx.newPage();
       pages.push(p);
-      await p.goto(`${baseURL}${i === 1 ? `/invite/${invite.data}` : "/"}`);
+      await p.goto(baseURL!);
       await p.getByLabel("E-mailadres").fill(users[i].email);
       await p.getByLabel("Wachtwoord", { exact: true }).fill(password);
       await p.getByRole("button", { name: "Inloggen", exact: true }).click();
       await expect(p.getByRole("heading", { name: /Jouw crew/ })).toBeVisible();
     }
     const [a, b] = pages;
-    await b.getByRole("button", { name: "Deelnemen", exact: true }).click();
     await expect(
-      b.getByText("Je bent lid van de crew. Delen staat uit."),
+      b.getByRole("button", { name: "Crew aanmaken", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      b.getByRole("button", { name: "Deelnemen", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      b.getByRole("button", { name: "Registreren", exact: true }),
     ).toBeVisible();
-    await expect(b.getByText(/^Browser test crew/).first()).toBeVisible();
+    const communities = await Promise.all(
+      clients.map((c) => c.rpc("ensure_community_membership")),
+    );
+    expect(communities[0].data).toBeTruthy();
+    expect(communities[1].data).toBe(communities[0].data);
     await b.getByRole("button", { name: "Registreren", exact: true }).click();
     const dialog = b.getByRole("dialog", { name: "Nieuwe registratie" });
-    await dialog
-      .getByLabel("Middel", { exact: true })
-      .fill("Browser-test registratie");
+    await dialog.getByLabel("Middel", { exact: true }).fill(recordName);
     await dialog.getByLabel("Opmerking (optioneel)").fill("Privé testnotitie");
     await contexts[1].setOffline(true);
     await dialog.getByRole("button", { name: "Registratie opslaan" }).click();
@@ -67,7 +68,7 @@ test("two browser sessions: invitation, private record, explicit sharing, realti
       "Je invoer is behouden",
     );
     await expect(dialog.getByLabel("Middel", { exact: true })).toHaveValue(
-      "Browser-test registratie",
+      recordName,
     );
     await contexts[1].setOffline(false);
     await dialog.getByRole("button", { name: "Registratie opslaan" }).click();
@@ -75,9 +76,7 @@ test("two browser sessions: invitation, private record, explicit sharing, realti
     await expect(b.getByRole("status")).toContainText(
       "Registratie opgeslagen.",
     );
-    await expect(
-      a.getByText("Browser-test registratie", { exact: true }),
-    ).toHaveCount(0);
+    await expect(a.getByText(recordName, { exact: true })).toHaveCount(0);
     await b.getByRole("button", { name: "Mijn instellingen" }).click();
     b.once("dialog", (d) => d.accept());
     await b.getByRole("checkbox", { name: /Deel mijn registraties/ }).click();
@@ -85,16 +84,16 @@ test("two browser sessions: invitation, private record, explicit sharing, realti
     await expect(
       b.getByRole("checkbox", { name: /Deel mijn registraties/ }),
     ).toBeChecked();
-    await expect(
-      a.getByText("Browser-test registratie", { exact: true }),
-    ).toBeVisible({ timeout: 20000 });
+    await expect(a.getByText(recordName, { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
     await b.getByRole("checkbox", { name: /Deel mijn registraties/ }).click();
     await expect(
       b.getByRole("checkbox", { name: /Deel mijn registraties/ }),
     ).not.toBeChecked();
-    await expect(
-      a.getByText("Browser-test registratie", { exact: true }),
-    ).toHaveCount(0, { timeout: 20000 });
+    await expect(a.getByText(recordName, { exact: true })).toHaveCount(0, {
+      timeout: 20000,
+    });
     const mobile = testInfo.project.name === "mobile-chromium";
     const nav = b.getByRole("navigation", {
       name: mobile ? "Mobiele navigatie" : "Hoofdnavigatie",
@@ -105,27 +104,21 @@ test("two browser sessions: invitation, private record, explicit sharing, realti
         exact: true,
       })
       .click();
-    await expect(
-      b.getByText("Browser-test registratie", { exact: true }),
-    ).toBeVisible();
+    await expect(b.getByText(recordName, { exact: true })).toBeVisible();
     await b.getByRole("button", { name: "Bewerken", exact: true }).click();
     await b
       .getByRole("dialog")
       .getByLabel("Middel", { exact: true })
-      .fill("Gecorrigeerde testregistratie");
+      .fill(editedName);
     await b.getByRole("button", { name: "Registratie opslaan" }).click();
-    await expect(
-      b.getByText("Gecorrigeerde testregistratie", { exact: true }),
-    ).toBeVisible();
+    await expect(b.getByText(editedName, { exact: true })).toBeVisible();
     await b.screenshot({
       path: testInfo.outputPath("timeline.png"),
       fullPage: true,
     });
     b.once("dialog", (d) => d.accept());
     await b.getByRole("button", { name: "Verwijderen", exact: true }).click();
-    await expect(
-      b.getByText("Gecorrigeerde testregistratie", { exact: true }),
-    ).toHaveCount(0);
+    await expect(b.getByText(editedName, { exact: true })).toHaveCount(0);
     expect(
       await b.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -156,7 +149,7 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
   );
   const contexts = [];
   const pages = [];
-  let cid = "";
+  const authorName = `Foto ${crypto.randomUUID().slice(0, 8)}`;
   const mobile = testInfo.project.name === "mobile-chromium";
   async function openTab(p: import("@playwright/test").Page, label: string) {
     if (mobile) {
@@ -173,18 +166,14 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
   }
   try {
     for (let i = 0; i < 3; i++) {
-      const { error } = await clients[i].auth.signUp(users[i]);
-      if (error) throw error;
-    }
-    const crew = await clients[0].rpc("create_crew", {
-      crew_name: "Challenge browser crew",
-    });
-    if (crew.error) throw crew.error;
-    cid = crew.data;
-    const invitation = await clients[0].rpc("create_invite", { cid });
-    for (const client of clients.slice(1)) {
-      const { error } = await client.rpc("join_crew", {
-        token: invitation.data,
+      const { error } = await clients[i].auth.signUp({
+        ...users[i],
+        options: {
+          data: {
+            display_name:
+              i === 1 ? authorName : `Test ${crypto.randomUUID().slice(0, 6)}`,
+          },
+        },
       });
       if (error) throw error;
     }
@@ -224,28 +213,40 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
     );
     for (const p of [reviewer, reviewer2]) {
       await openTab(p, "Beoordelen");
+      const submission = p
+        .locator(".card")
+        .filter({
+          has: p.getByRole("heading", { name: "Crew in beeld", exact: true }),
+        })
+        .filter({ hasText: authorName });
+      await expect(submission).toBeVisible({ timeout: 10000 });
       await expect(
-        p.getByRole("heading", { name: "Crew in beeld", exact: true }),
-      ).toBeVisible({ timeout: 10000 });
-      await expect(
-        p.getByRole("img", { name: "Bewijs: Crew in beeld" }),
+        submission.getByRole("img", { name: "Bewijs: Crew in beeld" }),
       ).toBeVisible();
-      await p.getByRole("button", { name: "Goedkeuren", exact: true }).click();
+      await submission
+        .getByRole("button", { name: "Goedkeuren", exact: true })
+        .click();
       await expect(p.getByRole("status")).toContainText("Stem opgeslagen.");
     }
     await openTab(author, "Leaderboard");
-    await expect(author.getByText("1 goedgekeurde challenges")).toBeVisible({
+    await expect(
+      author
+        .locator(".feed-row")
+        .filter({ hasText: "(jij)" })
+        .getByText("1 goedgekeurde challenges"),
+    ).toBeVisible({
       timeout: 20000,
     });
     await expect(
       author.getByText("10", { exact: false }).first(),
     ).toBeVisible();
     await openTab(author, "Wall of Shame");
+    const gallery = author.locator("article").filter({ hasText: authorName });
     await expect(
-      author.getByRole("heading", { name: "Crew in beeld", exact: true }),
+      gallery.getByRole("heading", { name: "Crew in beeld", exact: true }),
     ).toBeVisible();
     await expect(
-      author.getByRole("img", { name: "Bewijs: Crew in beeld" }),
+      gallery.getByRole("img", { name: "Bewijs: Crew in beeld" }),
     ).toBeVisible();
     await author.screenshot({
       path: testInfo.outputPath("wall.png"),

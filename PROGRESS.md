@@ -72,3 +72,12 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Gebruiker meldt dat hosted registratie, e-mailbevestiging en opnieuw inloggen werken; niet zelfstandig vanuit deze cloudomgeving geverifieerd.
 - Nederlandstalige HTML-template in Crew Control-stijl toegevoegd onder `supabase/templates/confirmation.html`. Supabase `ConfirmationURL` blijft intact; geen externe assets of echte tokens opgenomen.
 - Browserpreview past op 320 en 600 pixels. De projecteigenaar moet de template nog in het hosted Supabase-dashboard opslaan; mailclientweergave en verzending daarna controleren.
+
+## Gewijzigde productflow: dezelfde URL voor iedereen
+
+- Gebruiker wil geen crew aanmaken of uitnodigingen beheren. App opent voortaan één gezamenlijke omgeving na registratie en e-mailbevestiging.
+- Nieuwe migratie `202610210003_shared_platform.sql`: singletonconfiguratie, bestaande bevestigde accounts inschrijven, Auth-trigger na bevestiging, idempotente inschrijving bij inloggen en behoud van het platform bij accountverwijdering. Geen automatische beheerderstoewijzing.
+- Crewcreatie, crewkeuze en uitnodigingen uit de gebruikersinterface verwijderd; oude uitnodigingslinks leiden naar de root-URL. Deeltoestemming blijft standaard uit en noemt expliciet alle bevestigde platformaccounts. Oude privécrewgegevens worden niet verplaatst of ontsloten.
+- Lokale migratie toegepast; 18 integratietests en de SQL-test voor onbevestigd → bevestigd geslaagd. Typecheck, lint en unit-tests worden opnieuw gecontroleerd, evenals de gewijzigde browserflows.
+- Hosted actie blijft noodzakelijk zonder accounttoegang: in Supabase SQL Editor uitsluitend `docs/enable-shared-platform.sql` uitvoeren. Volledige installatie in `docs/supabase-setup.sql` bijgewerkt voor nieuwe lege projecten.
+- Eindcontrole van deze wijziging geslaagd: typecheck, lint, 7 unit-tests, 18 integratietests, productiebuild en 8 browsercases tegen productiemodus (desktop en mobiel). De SQL-test bevestigt bovendien dat de gezamenlijke omgeving behouden blijft wanneer de laatste beheerder het eigen account verwijdert. De handmatige update is lokaal opnieuw uitgevoerd zonder dubbele challenges of nieuwe deeltoestemming.

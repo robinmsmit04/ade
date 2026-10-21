@@ -24,7 +24,6 @@ import {
   Music2,
   Lock,
   Download,
-  Copy,
   Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,12 +69,6 @@ const nav = [
 ] as const;
 const difficulties = ["Easy", "Awkward", "No Shame", "Legendary"] as const;
 type Review = { submission_id: string; reviewer_id: string; approved: boolean };
-type Invite = {
-  id: string;
-  expires_at: string;
-  uses: number;
-  max_uses: number;
-};
 type Score = { user_id: string; points: number; count: number };
 function errorText(e: unknown) {
   if (e instanceof ZodError)
@@ -203,7 +196,7 @@ function Proof({ submission }: { submission: Submission }) {
   );
 }
 
-export function CrewApp({ inviteToken }: { inviteToken?: string }) {
+export function CrewApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [boot, setBoot] = useState(configured);
   const [tab, setTab] = useState<Tab>("live");
@@ -217,7 +210,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [scores, setScores] = useState<Score[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
   const [sharing, setSharing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -240,8 +232,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   const [confirmation, setConfirmation] = useState<"data" | "account" | null>(
     null,
   );
-  const [inviteLink, setInviteLink] = useState("");
-  const [pendingInvite, setPendingInvite] = useState(inviteToken || "");
   const [, setTick] = useState(0);
   const generation = useRef(0);
   const actionLock = useRef(false);
@@ -259,18 +249,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     setProfiles([]);
     setMembers([]);
     setChallenges([]);
-    setInvites([]);
     setSharing(false);
     setScores([]);
     setLastSync("");
   }, []);
   useEffect(() => {
-    if (inviteToken) {
-      sessionStorage.setItem("crew-invite", inviteToken);
-    } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- restore non-sensitive invitation from browser session storage
-      setPendingInvite(sessionStorage.getItem("crew-invite") || "");
-    }
     if (!configured) return;
     const client = getSupabase();
     client.auth.getSession().then(({ data, error }) => {
@@ -288,7 +271,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
       }
     });
     return () => data.subscription.unsubscribe();
-  }, [inviteToken, clearData]);
+  }, [clearData]);
   useEffect(() => {
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -314,7 +297,16 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
   }, [recordOpen, selected, editingChallenge]);
   const loadCrews = useCallback(async () => {
     if (!uid) return;
-    const { data, error } = await getSupabase().from("crews").select("*");
+    const client = getSupabase();
+    const enrollment = await client.rpc("ensure_community_membership");
+    if (enrollment.error)
+      throw new Error(
+        "Je account kon nog niet worden klaargezet. De beheerder moet de platformupdate uitvoeren, of probeer het opnieuw.",
+      );
+    const { data, error } = await client
+      .from("crews")
+      .select("*")
+      .eq("id", enrollment.data);
     if (error) throw error;
     setCrews(data || []);
     setCid((current) =>
@@ -385,14 +377,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         );
         setReviews(rev.data || []);
         setScores(sc.data || []);
-        if (m.data?.some((x) => x.user_id === uid && x.role === "admin")) {
-          const inv = await client
-            .from("invites")
-            .select("id,expires_at,uses,max_uses")
-            .eq("crew_id", cid);
-          if (inv.error) throw inv.error;
-          if (gen === generation.current) setInvites(inv.data || []);
-        }
         setLastSync(new Date().toISOString());
       } catch (e) {
         if (gen === generation.current) {
@@ -488,7 +472,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     if (!uid || !cid) {
       setNotice(
         configured
-          ? "Maak eerst een crew aan of gebruik een uitnodiging."
+          ? "Je account wordt nog klaargezet. Probeer het opnieuw zodra de gegevens geladen zijn."
           : "Koppel eerst Supabase om echte registraties op te slaan.",
       );
       return;
@@ -556,7 +540,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             className="flex gap-3 text-sm muted"
             onClick={() => go("admin")}
           >
-            <Shield size={18} /> Crewbeheer
+            <Shield size={18} /> Beheer
           </button>
           <p className="eyebrow mt-4">GOOD TIMES. GOOD COMPANY.</p>
         </div>
@@ -567,28 +551,14 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
             <span className="brand-mark md:hidden">cc</span>
             <div>
               <p className="eyebrow">ADE / YOUR PRIVATE SPACE</p>
-              {crews.length > 1 ? (
-                <select
-                  aria-label="Actieve crew"
-                  className="!p-1 !min-h-8 !bg-transparent !border-0"
-                  value={cid}
-                  onChange={(e) => {
-                    clearData();
-                    setCid(e.target.value);
-                  }}
-                >
-                  {crews.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-sm font-bold mt-2">
-                  {crew?.name || "Jouw crew begint hier"}{" "}
-                  <span className="text-lime-300">↗</span>
-                </p>
-              )}
+              <p className="text-sm font-bold mt-2">
+                {crew?.name || "Crew Control"}{" "}
+                <ArrowUpRight
+                  size={13}
+                  className="inline text-lime-300"
+                  aria-hidden="true"
+                />
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -625,7 +595,15 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
           {error && (
             <div className="notice error mb-5" role="alert">
               {error}
-              <button className="link ml-3" onClick={() => void refresh()}>
+              <button
+                className="link ml-3"
+                onClick={() => {
+                  setError("");
+                  void loadCrews()
+                    .then(() => refresh())
+                    .catch((e) => setError(errorText(e)));
+                }}
+              >
                 Opnieuw laden
               </button>
             </div>
@@ -635,57 +613,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               {notice}
             </p>
           )}
-          {uid && !cid && (
-            <section className="card stack mb-7">
-              <h2>Maak ruimte voor jouw crew.</h2>
-              <p className="muted text-sm">
-                Maak een privécrew aan, of sluit je aan via een uitnodiging.
-                Delen staat altijd uit bij de start.
-              </p>
-              <form
-                className="flex flex-wrap gap-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const f = new FormData(e.currentTarget);
-                  void run(async () => {
-                    const id = await rpc("create_crew", {
-                      crew_name: f.get("name"),
-                    });
-                    setCid(id);
-                  }, "Je crew is aangemaakt.");
-                }}
-              >
-                <input
-                  name="name"
-                  minLength={2}
-                  maxLength={60}
-                  placeholder="Naam van je crew"
-                  aria-label="Crewnaam"
-                  required
-                  className="!w-auto flex-1"
-                />
-                <Button disabled={busy}>Crew aanmaken</Button>
-              </form>
-            </section>
-          )}
-          {uid && pendingInvite && (
-            <section className="notice mb-6 flex flex-wrap items-center gap-4">
-              <p>Er staat een crew-uitnodiging voor je klaar.</p>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    const id = await rpc("join_crew", { token: pendingInvite });
-                    setCid(id);
-                    setPendingInvite("");
-                    sessionStorage.removeItem("crew-invite");
-                    history.replaceState(null, "", "/");
-                  }, "Je bent lid van de crew. Delen staat uit.")
-                }
-              >
-                Deelnemen
-              </Button>
-            </section>
+          {uid && !cid && !error && (
+            <p className="notice mb-6" role="status">
+              Je account wordt klaargezet. Je sluit automatisch aan na
+              e-mailbevestiging.
+            </p>
           )}
           {tab === "live" && (
             <>
@@ -1150,7 +1082,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   <Empty>
                     {cid
                       ? "Geen challenges voor dit filter."
-                      : "Je privéchallenges verschijnen nadat je een crew hebt aangemaakt."}
+                      : "Challenges verschijnen zodra je account is klaargezet."}
                   </Empty>
                 </div>
               )}
@@ -1332,7 +1264,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                 <p className="eyebrow mb-3">WHAT HAPPENS IN THE CREW…</p>
                 <h1>Wall of Shame</h1>
                 <p className="muted text-sm mt-3">
-                  Onze beste momenten. Alleen voor de crew.
+                  Onze beste momenten. Alleen voor bevestigde deelnemers.
                 </p>
               </div>
               <div className="challenge-grid">
@@ -1368,11 +1300,12 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                   Privacy in jouw handen
                 </h2>
                 <p className="text-sm muted leading-6">
-                  Delen geeft alle huidige en toekomstige leden van deze crew
-                  toegang tot je volledige registratiehistorie binnen deze crew,
-                  inclusief hoeveelheden en opmerkingen. De beheerder heeft geen
-                  extra toegang. Intrekken blokkeert nieuwe toegang; eerdere
-                  screenshots of bekeken gegevens kun je niet terughalen.
+                  Delen geeft alle huidige en toekomstige bevestigde accounts op
+                  Crew Control toegang tot je volledige registratiehistorie op
+                  dit platform, inclusief hoeveelheden en opmerkingen. De
+                  beheerder heeft geen extra toegang. Intrekken blokkeert nieuwe
+                  toegang; eerdere screenshots of bekeken gegevens kun je niet
+                  terughalen.
                 </p>
                 <label className="flex items-center gap-3">
                   <input
@@ -1384,7 +1317,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                       if (
                         next &&
                         !window.confirm(
-                          "Ik geef expliciet toestemming om mijn volledige registratiehistorie binnen deze crew te delen, inclusief opmerkingen en hoeveelheden.",
+                          "Ik geef expliciet toestemming om mijn volledige registratiehistorie met alle huidige en toekomstige bevestigde accounts op Crew Control te delen, inclusief opmerkingen en hoeveelheden.",
                         )
                       )
                         return;
@@ -1404,7 +1337,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                       );
                     }}
                   />
-                  Deel mijn registraties met {crew?.name || "mijn crew"}
+                  Deel mijn registraties met {crew?.name || "Crew Control"}
                 </label>
                 <p className="text-xs muted">
                   Check-ins hebben per bericht een eigen deelkeuze. Uploads
@@ -1566,9 +1499,9 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
           )}
           {tab === "admin" && (
             <section className="stack">
-              <h1>Crewbeheer</h1>
+              <h1>Beheer</h1>
               {!cid ? (
-                <Empty>Maak eerst een crew aan.</Empty>
+                <Empty>Je account wordt klaargezet.</Empty>
               ) : (
                 <>
                   <div className="card stack">
@@ -1576,7 +1509,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                     <p className="text-sm muted">
                       {admin
                         ? "Jij bent beheerder. Privacytoestemming blijft altijd bij elk lid."
-                        : "Alleen beheerders kunnen uitnodigingen en challenges beheren."}
+                        : "Alleen beheerders kunnen challenges beheren."}
                     </p>
                     {admin && (
                       <form
@@ -1591,11 +1524,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                               new_name: f.get("name"),
                               threshold: Number(f.get("threshold")),
                             });
-                          }, "Crewinstellingen opgeslagen.");
+                          }, "Platforminstellingen opgeslagen.");
                         }}
                       >
                         <label>
-                          Crewnaam
+                          Platformnaam
                           <input
                             name="name"
                             defaultValue={crew?.name}
@@ -1655,102 +1588,11 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                             Beheerder maken
                           </Button>
                         )}
-                        {(admin || m.user_id === uid) && (
-                          <Button
-                            variant="ghost"
-                            disabled={busy}
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  "Lidmaatschap verwijderen? Registraties en inzendingen in deze crew worden gewist.",
-                                )
-                              )
-                                void run(async () => {
-                                  await rpc("remove_member", {
-                                    cid,
-                                    uid: m.user_id,
-                                  });
-                                });
-                            }}
-                          >
-                            {m.user_id === uid ? "Verlaten" : "Verwijderen"}
-                          </Button>
-                        )}
                       </div>
                     ))}
                   </div>
                   {admin && (
                     <>
-                      <div className="card stack">
-                        <h2>Uitnodigingen</h2>
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            void run(async () => {
-                              const token = await rpc("create_invite", { cid });
-                              setInviteLink(
-                                `${location.origin}/invite/${token}`,
-                              );
-                            })
-                          }
-                        >
-                          <Plus size={16} />
-                          Nieuwe uitnodiging
-                        </Button>
-                        {inviteLink && (
-                          <div className="notice break-all">
-                            <p>{inviteLink}</p>
-                            <Button
-                              variant="ghost"
-                              onClick={() => {
-                                void navigator.clipboard
-                                  .writeText(inviteLink)
-                                  .then(
-                                    () => setNotice("Link gekopieerd."),
-                                    () =>
-                                      setError(
-                                        "Kopiëren mislukt. Selecteer de link handmatig.",
-                                      ),
-                                  );
-                              }}
-                            >
-                              <Copy size={16} />
-                              Kopiëren
-                            </Button>
-                          </div>
-                        )}
-                        <p className="text-xs muted">
-                          Links zijn 7 dagen geldig, voor maximaal 20 nieuwe
-                          leden. Deel ze alleen privé; bestaande links zijn niet
-                          opnieuw uitleesbaar.
-                        </p>
-                        {invites.map((i) => (
-                          <div
-                            key={i.id}
-                            className="flex flex-wrap items-center justify-between gap-2"
-                          >
-                            <p className="text-xs muted">
-                              {i.uses}/{i.max_uses} gebruikt · verloopt{" "}
-                              {formatDate(i.expires_at)}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              disabled={busy}
-                              onClick={() =>
-                                void run(async () => {
-                                  const { error } = await getSupabase()
-                                    .from("invites")
-                                    .delete()
-                                    .eq("id", i.id);
-                                  if (error) throw error;
-                                }, "Uitnodiging ingetrokken.")
-                              }
-                            >
-                              Intrekken
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
                       <div className="card stack">
                         <div className="section-title">
                           <h2>Challenges beheren</h2>
@@ -1797,7 +1639,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                     label: "Instellingen",
                     icon: Settings,
                   },
-                  { id: "admin" as const, label: "Crewbeheer", icon: Shield },
+                  { id: "admin" as const, label: "Beheer", icon: Shield },
                 ].map((n) => (
                   <button
                     key={n.id}

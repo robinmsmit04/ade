@@ -33,7 +33,7 @@ export function AuthForm() {
         const { error } = await client.auth.signUp({
           ...values,
           options: {
-            emailRedirectTo: `${location.origin}/auth/callback${sessionStorage.getItem("crew-invite") ? "?next=/invite/" + sessionStorage.getItem("crew-invite") : ""}`,
+            emailRedirectTo: `${location.origin}/auth/callback`,
             data: { display_name: values.email.split("@")[0] },
           },
         });
@@ -75,12 +75,13 @@ export function AuthForm() {
         <span className="brand-mark">cc</span> CREW CONTROL
       </div>
       <div className="card stack">
-        <span className="eyebrow">PRIVATE CREW · ADE</span>
+        <span className="eyebrow">CREW CONTROL · ADE</span>
         <h1>
           {mode === "signup" ? "Welkom bij de crew." : "Terug bij je crew."}
         </h1>
         <p className="muted text-sm leading-6">
-          Een privéplek voor je weekend. Jij bepaalt wat je deelt.
+          Maak een account, bevestig je e-mail en doe mee. Iedereen met deze
+          website kan deelnemen. Jij bepaalt wat je deelt.
         </p>
         <form className="stack" onSubmit={handleSubmit(submit)}>
           <label>

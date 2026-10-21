@@ -10,13 +10,13 @@
 ## 2. Hosted Supabase
 
 1. Maak een project aan. Bewaar het databasewachtwoord buiten deze repository.
-2. Koppel de CLI (`supabase login`, `supabase link --project-ref <jouw-ref>`) en voer `supabase db push` uit. Of voer de twee SQL-bestanden in `supabase/migrations` in volgorde uit in de SQL Editor, als projectbeheerder.
+2. Koppel de CLI (`supabase login`, `supabase link --project-ref <jouw-ref>`) en voer `supabase db push` uit. Of voer de SQL-bestanden in `supabase/migrations` in volgorde uit in de SQL Editor, als projectbeheerder.
 3. De migraties maken tabellen, constraints, RLS, helper/RPC-functies, een gebruikersprofieltrigger, realtimepublicatie, 20 challengetemplates en de private bucket `crew-evidence` aan. Voer ze niet tweemaal handmatig uit. De CLI houdt migratieversies bij.
 4. Controleer dat alle applicatietabellen RLS gebruiken en `crew-evidence` **private** is. Laat `activity` in `supabase_realtime`; publiceer geen gevoelige registratietabellen.
 5. Auth → URL Configuration: stel Site URL in op je productie-URL. Voeg `https://<jouw-domein>/auth/callback` en lokale ontwikkel-URL's toe als toegestane redirects. Voor uitnodigingen na e-mailbevestiging is ook `https://<jouw-domein>/auth/callback?next=/invite/**` nodig (of het ondersteunde globpatroon `https://<jouw-domein>/auth/**`). Sta uitsluitend eigen domeinen toe.
 6. Laat e-mailbevestiging in productie aan. Configureer een eigen SMTP-provider, afzender, afleverbaarheid, rate limits in Supabase. De lokale tests gebruiken uitsluitend auto-confirmatie in een afgeschermde wegwerpomgeving.
 7. Kopieer de publieke URL en publishable key (legacy `anon` mag ook) naar `.env.local`, overeenkomstig `.env.example`. Dit zijn publieke clientinstellingen, **geen service-role key**. Een service-role key is nergens nodig voor de applicatie.
-8. Start `npm run dev`. Registreer accounts, maak een crew aan en test een uitnodiging met een tweede account. Iedere nieuwe crew krijgt de templates gekopieerd en kan ze daarna zelfstandig beheren.
+8. Start `npm run dev`. Registreer twee accounts en bevestig de e-mail. Beide sluiten automatisch aan bij dezelfde omgeving; er is geen crew- of uitnodigingsstap. De gezamenlijke omgeving bevat de twintig challenges.
 
 ## 3. Vercel
 
@@ -78,7 +78,7 @@ Sla externe geheimen uitsluitend op in de instellingen van de betreffende dienst
 
 - Migraties toegepast op het bedoelde project, private bucket en RLS gecontroleerd.
 - Hosted registratie, bevestigingsmail, login en wachtwoordherstel via het echte domein getest.
-- Twee echte accounts: uitnodigen, privé opslaan, delen, intrekken, realtime en opnieuw inloggen getest.
+- Twee echte accounts: automatisch aansluiten, privé opslaan, delen, intrekken, realtime en opnieuw inloggen getest.
 - Ander crewaccount: registraties, bestanden, reviews en scores onbereikbaar.
 - Foto én een afspeelbare iPhone-video uploaden, bekijken, beoordelen en wissen.
 - Twee andere stemmers: precies eenmaal punten; eigen stem en browser-scorewijziging geweigerd.
@@ -86,3 +86,20 @@ Sla externe geheimen uitsluitend op in de instellingen van de betreffende dienst
 - Export en definitieve accountverwijdering testen; beheer eerst overdragen indien nodig.
 - Back-ups, bewaartermijn en periodieke opruiming van niet-ingezonden of door crewverlaten verweesde media inrichten. Media van een gebruiker blijven via `my_media_paths` vindbaar voor eigen verwijdering, ook na crewverlaten.
 - Maak met de crew afspraken over toestemming en bewaartermijnen. Medialinks verlopen na 60 seconden; reeds bekeken/kopieerbare informatie kan niet worden teruggehaald.
+
+## Bestaande installatie omzetten naar één gezamenlijk platform
+
+Open in het bestaande Supabase-project **SQL Editor → New query**. Kopieer het volledige bestand `docs/enable-shared-platform.sql` via GitHub **Copy raw file**, plak het, zorg dat er geen gedeeltelijke selectie actief is en klik **Run**. Verwacht: **Automatisch aansluiten ingesteld**. Dit is alleen de nieuwe derde migratie; voer de volledige oorspronkelijke installatie niet opnieuw uit. Nieuwe installaties gebruiken het bijgewerkte volledige `docs/supabase-setup.sql` of de drie CLI-migraties in volgorde.
+
+De update voegt alle bestaande bevestigde accounts toe aan één omgeving, schrijft toekomstige accounts in zodra hun e-mail bevestigd is en herstelt ontbrekende inschrijving bij inloggen. Deeltoestemming staat standaard uit en wordt bij herhaald inloggen niet overschreven. Oude privécrewgegevens blijven op hun oorspronkelijke plek en worden niet automatisch in het gezamenlijke platform getoond. Vercel hoeft geen extra variabele of groeps-ID te krijgen. De GitHub-gekoppelde deployment bouwt de gewijzigde interface; open daarna de gebruikelijke website en log opnieuw in.
+
+Nieuwe accounts krijgen uitsluitend de rol member. Om jezelf eenmalig beheerder te maken, voer als projecteigenaar in Supabase SQL Editor de volgende query uit met je eigen, al bevestigde accountadres. Dit is optioneel voor gewone deelname; beheer is nodig om challenges of de reviewdrempel aan te passen. Zet deze query met je eigen adres niet in Git.
+
+```sql
+update public.members m set role='admin'
+from auth.users u, public.community_settings s
+where m.user_id=u.id and m.crew_id=s.crew_id
+  and lower(u.email)=lower('VUL_HIER_JE_EIGEN_ACCOUNTADRES_IN');
+```
+
+Voor een lokaal bewijs van de bevestigingsgrens kan de database-eigenaar `supabase/tests/shared-platform.sql` tegen een wegwerpdatabase uitvoeren. De test gebruikt een onbevestigde fixture, toetst onder authenticated-rechten, bevestigt de fixture en controleert gewone memberrechten en uitgeschakelde toestemming. Alle fixturewijzigingen worden teruggedraaid.

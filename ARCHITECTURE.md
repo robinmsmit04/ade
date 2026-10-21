@@ -1,5 +1,13 @@
 # Architectuur
 
+## Gezamenlijk platform (actuele gebruikersflow)
+
+Iedereen gebruikt dezelfde URL, registreert en bevestigt zijn e-mail. De derde migratie maakt een singleton `community_settings`-configuratie die naar één gedeelde, intern als crew opgeslagen omgeving verwijst. Een Auth-trigger schrijft uitsluitend bevestigde accounts in. `ensure_community_membership` controleert de bevestiging opnieuw en is idempotent voor bestaande sessies. De browser selecteert altijd deze omgeving; crewkeuze, crewcreatie en uitnodigingsschermen zijn verwijderd. Oude uitnodigingsroutes sturen naar de gewone startpagina.
+
+Alle nieuwe leden krijgen memberrechten, nooit automatisch admin. De projecteigenaar kan een bestaand bevestigd account via SQL expliciet beheer geven. Per account staat delen standaard uit; inschrijving en opnieuw inloggen wijzigen bestaande toestemming niet. De toestemmingstekst vermeldt dat delen zichtbaar maakt voor alle huidige en toekomstige bevestigde deelnemers. RLS, media- en stemrechten blijven dezelfde lidmaatschaps- en toestemmingsgrenzen afdwingen. Bestaande privécrews en hun gegevens worden niet samengevoegd. De oude serverfuncties blijven voor historische compatibiliteit en isolatietests aanwezig, maar vormen geen instapflow meer.
+
+De gedeelde omgeving overleeft accountverwijdering, ook als de laatste beheerder vertrekt. Historische technische beschrijvingen hieronder blijven relevant voor de onderliggende relationele structuur.
+
 ## Applicatie
 
 Next.js App Router serveert de Nederlandstalige mobiele shell, `/invite/[token]` en een PKCE-authcallback. React beheert sessie, actieve crew, navigatie en formulieren. Zod valideert record- en challengegrenzen; React Hook Form voert authvalidatie uit. Tailwind 4 verzorgt layout; `components/ui/button.tsx` volgt het shadcn/ui/Radix Slot/CVA-patroon. De complete bron en configuratie staan in de repository.

@@ -11,7 +11,7 @@ Uitgevoerd op 21 oktober 2026 in deze cloudomgeving, met Node 24, PostgreSQL 17 
 | Vitest unit                                  | 7 tests geslaagd                                                                                                |
 | Vitest Supabase-integratie                   | 12 tests geslaagd                                                                                               |
 | Playwright Chromium desktop                  | 4 tests geslaagd                                                                                                |
-| Playwright mobiel Chromium                   | 4 tests geslaagd, ook in productiemodus, browserflows op 390 × 844                                                                     |
+| Playwright mobiel Chromium                   | 4 tests geslaagd, ook in productiemodus, browserflows op 390 × 844                                              |
 | Productiebuild Next.js                       | Geslaagd, ook na een schone npm ci                                                                              |
 | `npm audit --omit=dev --audit-level=high`    | 0 kwetsbaarheden gemeld                                                                                         |
 | Kleine lokale stack opnieuw starten          | Geslaagd; migratieledger voorkomt dubbel toepassen                                                              |
@@ -72,3 +72,13 @@ Gebruik de checklist in SETUP.md: e-mailbevestiging en herstelmail, authcallback
 Bij een koude start kon de realtime-test een wijziging versturen vóór de PostgreSQL-stream gereed was. De client onderscheidt nu een WebSocket-join van een werkende PostgreSQL-subscriptie, ververst na de gereedheidsmelding en toont pas dan Live. De test verstuurt de wijziging na dezelfde echte servermelding, zonder polling als bewijs te gebruiken. Na het expliciet herstarten van de Realtime-service zijn de 12 integratietests geslaagd. Typecheck, lint en 7 unit-tests zijn opnieuw geslaagd. Hosted tests blijven geblokkeerd op externe accounttoegang.
 
 Ook de productiebuild en alle 8 desktop-/mobiele Chromium-tests zijn na deze correctie opnieuw geslaagd. Deze resultaten betreffen de lokale productiebuild met de echte lokale Supabase-diensten, niet een publieke deployment.
+
+## Eén gezamenlijke omgeving
+
+De huidige browserflow gebruikt geen crewcreatie of uitnodiging: twee accounts openen dezelfde root-URL en kunnen direct registreren. De browsercases voor delen/intrekken en foto → twee reviews → ranglijst/galerij zijn aangepast voor deze gezamenlijke omgeving, met unieke fixtures zodat gelijktijdige tests elkaars gegevens niet verwarren.
+
+Zes aanvullende integratietests controleren automatische inschrijving, één gedeelde omgeving, geen beheerrechten bij aanmelden, geweigerde anonieme toegang en zelfpromotie, privérecords, expliciet delen/intrekken, behoud van deelkeuze bij opnieuw inschrijven, geen ontsluiting van oude privécrewdata, en parallelle idempotente inschrijving. Samen met de twaalf regressietests zijn dit achttien integratietests.
+
+Ook `supabase/tests/shared-platform.sql` is uitgevoerd tegen de lokale database: een onbevestigd account kan niet aansluiten, e-mailbevestiging activeert deelname en geeft uitsluitend memberrechten met delen uit. De SQL-fixture rolt terug. Deze controle vervangt geen daadwerkelijke hosted bevestigingsmail; de gebruiker heeft die flow eerder zelf bevestigd. De nieuwe hosted migratie moet nog door de projecteigenaar worden uitgevoerd.
+
+Eindcontrole van de gezamenlijke instapflow: typecheck, lint, 7 unit-tests, 18 integratietests, productiebuild en alle 8 Chromium-browsercases tegen productiemodus geslaagd. De SQL-fixture bewijst ook dat accountverwijdering van de laatste beheerder het platform behoudt. De bestaande-installatie-update is lokaal herhaald zonder dubbele inschrijving of challenges. Hosted activering blijft de SQL-stap voor de projecteigenaar.

@@ -31,7 +31,7 @@ test("configured app requires authentication; unconfigured app is honest and res
       page.getByRole("heading", { name: "De challenges." }),
     ).toBeVisible();
     await expect(
-      page.getByText("Je privéchallenges verschijnen"),
+      page.getByText("Challenges verschijnen zodra je account"),
     ).toBeVisible();
     await nav
       .getByRole("button", {
