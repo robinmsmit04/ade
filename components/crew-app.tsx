@@ -423,7 +423,16 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         },
         () => void refresh(true),
       )
-      .subscribe((status) => setConnected(status === "SUBSCRIBED"));
+      .on("system", {}, (payload) => {
+        if (payload.extension === "postgres_changes") {
+          setConnected(payload.status === "ok");
+          if (payload.status === "ok") void refresh(true);
+        }
+      })
+      .subscribe((status) => {
+        // A joined WebSocket is not proof that PostgreSQL replication is ready.
+        if (status !== "SUBSCRIBED") setConnected(false);
+      });
     const timer = setInterval(() => void refresh(true), 15000);
     const focus = () => void refresh(true);
     window.addEventListener("online", focus);

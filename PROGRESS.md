@@ -51,3 +51,13 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Alle 8 browsercontroles ook tegen `next start` (productiemodus) geslaagd.
 - 12 integratietests geslaagd; daadwerkelijke realtime en accountverwijdering zijn afzonderlijk gecontroleerd.
 - Implementatiecommit `d7496ce` is succesvol naar `origin/main` gepusht; Git bevestigde het aanmaken van de remote branch. De documentatie wordt in een opvolgcommit bijgewerkt.
+
+## Deploymentcontrole
+
+- GitHub `main` gecontroleerd: gelijk aan lokale HEAD vóór de nieuwe realtime-correctie.
+- Geen beschikbare Supabase-/Vercel-integratie; Supabase CLI mist accounttoken en Vercel CLI meldt uitgelogd. Bestaande lokale Supabase-testcredentials zijn geen hosted accounttoegang.
+- Management-API's `api.supabase.com` en `api.vercel.com` worden door de huidige netwerkpolicy geblokkeerd. Beide bestemmingen en de vereisten `SUPABASE_ACCESS_TOKEN` en `VERCEL_TOKEN` zijn bevestigd opgeslagen in het cloudconfiguratieconcept. Waarden ontbreken nog; opslaan van het concept is geen runtime-activering of publicatie.
+- Bij hercontrole een koude-startprobleem gevonden: de Realtime-client meldde een WebSocket-join vóór de PostgreSQL-subscriptie klaar was. De Live-indicator en integratietest wachten nu op de daadwerkelijke PostgreSQL-gereedheidsmelding. Na een expliciete restart van Realtime slagen alle 12 integratietests.
+- Hosted migraties, Auth-redirects, Vercel-variabelen en publieke deployment zijn nog niet uitgevoerd: accounttoegang en het bedoelde Supabase-project ontbreken. Geen publieke HTTPS-URL aangemaakt en geen productie-eindtests geclaimd.
+- GitHub Actions API is via deze omgeving niet toegankelijk; een geslaagde CI-run is daarom niet bevestigd. Native Git-toegang werkt wel.
+- De gecorrigeerde productiebuild is opnieuw getest: alle 8 Chromium-browsertests slagen op desktop en mobiel formaat. De wijziging en deze bevindingen worden naar `main` gepusht.

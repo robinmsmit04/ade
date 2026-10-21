@@ -66,3 +66,9 @@ De suite bewaart screenshots van tijdlijn en galerij en failure traces in de gen
 ## Nog in de echte omgeving uitvoeren
 
 Gebruik de checklist in SETUP.md: e-mailbevestiging en herstelmail, authcallback op het echte domein, hosted RLS/Storage/Realtime, fysieke iPhone/Safari/PWA-installatie, afspelen van echte iPhone-video, langzame netwerkherstelpraktijk, back-ups en bewaartermijnen. De CI-workflow bevat ook WebKit, maar is hier niet als uitgevoerd aangemerkt.
+
+## Hercontrole voor deployment
+
+Bij een koude start kon de realtime-test een wijziging versturen vóór de PostgreSQL-stream gereed was. De client onderscheidt nu een WebSocket-join van een werkende PostgreSQL-subscriptie, ververst na de gereedheidsmelding en toont pas dan Live. De test verstuurt de wijziging na dezelfde echte servermelding, zonder polling als bewijs te gebruiken. Na het expliciet herstarten van de Realtime-service zijn de 12 integratietests geslaagd. Typecheck, lint en 7 unit-tests zijn opnieuw geslaagd. Hosted tests blijven geblokkeerd op externe accounttoegang.
+
+Ook de productiebuild en alle 8 desktop-/mobiele Chromium-tests zijn na deze correctie opnieuw geslaagd. Deze resultaten betreffen de lokale productiebuild met de echte lokale Supabase-diensten, niet een publieke deployment.

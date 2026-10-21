@@ -215,7 +215,7 @@ describe.sequential(
         (resolve, reject) => {
           const timeout = setTimeout(
             () => reject(new Error("Realtime timed out")),
-            15000,
+            25000,
           );
           const channel = a
             .channel(`test-${crypto.randomUUID()}`)
@@ -233,13 +233,31 @@ describe.sequential(
                 resolve(payload.new);
               },
             )
-            .subscribe(async (status) => {
-              if (status === "SUBSCRIBED")
-                await b
+            .on("system", {}, async (payload) => {
+              if (
+                payload.extension === "postgres_changes" &&
+                payload.status === "ok"
+              ) {
+                const { error } = await b
                   .from("records")
                   .update({ notes: "Realtime privétekst" })
                   .eq("id", rid);
-            });
+                if (error) {
+                  clearTimeout(timeout);
+                  void a.removeChannel(channel);
+                  reject(error);
+                }
+              }
+              if (
+                payload.extension === "postgres_changes" &&
+                payload.status === "error"
+              ) {
+                clearTimeout(timeout);
+                void a.removeChannel(channel);
+                reject(new Error("PostgreSQL realtime subscription failed"));
+              }
+            })
+            .subscribe();
         },
       );
       const event = await received;
