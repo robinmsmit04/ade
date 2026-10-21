@@ -1,13 +1,13 @@
 -- Voer dit HELE bestand uit in Supabase SQL Editor; geen UUID of credentials invullen.
 BEGIN;
--- Official ADE Selectie catalog. Repeat-safe; existing evidence and awarded points stay intact.
-alter table public.festivals drop constraint if exists festivals_id_check;
-alter table public.festivals add constraint festivals_id_check check(id in ('DGTL','KI/KI','ADE'));
-insert into public.festivals(id,name) values('ADE','ADE') on conflict(id) do update set name=excluded.name;
-create temporary table ade_challenge_catalog(
- id uuid primary key,title text,description text,evidence text,difficulty text,points integer
-) on commit drop;
-insert into ade_challenge_catalog values
+-- One atomic statement: no temporary tables, no dependency on session or COMMIT behavior.
+do $ade_catalog$
+declare
+ community uuid;
+ catalog jsonb;
+begin
+ select jsonb_agg(to_jsonb(row_data)) into catalog
+ from (values
 ('ade00008-0000-4000-8000-000000000001','De dubbelganger','Maak een foto met iemand die qua uiterlijk of outfit verdacht veel op jou lijkt.','Een foto van jou en je dubbelganger, met toestemming van beiden.','Easy',10),
 ('ade00008-0000-4000-8000-000000000002','De festivalbruiloft','Maak een trouwfoto met een wildvreemde, inclusief geïmproviseerd aanzoek.','Een trouwfoto met een instemmende onbekende en een geïmproviseerde aanzoekpose.','Easy',10),
 ('ade00008-0000-4000-8000-000000000003','De uitsmijter','Maak een foto met een beveiliger die een duimpje omhoog geeft.','Een foto samen met een instemmende beveiliger die een duimpje omhoog geeft.','Easy',10),
@@ -20,29 +20,35 @@ insert into ade_challenge_catalog values
 ('ade00008-0000-4000-8000-00000000000a','De celebrity','Maak een foto met iemand die opvallend veel lijkt op een bekende Nederlander of internationale artiest.','Een foto met een instemmende lookalike van een bekende Nederlander of internationale artiest.','Awkward',30),
 ('ade00008-0000-4000-8000-00000000000b','De hoofdact','Maak een selfie met een DJ die daadwerkelijk op het festival draait. Geen foto vanaf het publiek, echt samen op de foto.','Een gezamenlijke selfie met een instemmende DJ die op het festival draait; een foto vanaf het publiek telt niet.','Legendary',100),
 ('ade00008-0000-4000-8000-00000000000c','De legendarische elf','Verzamel elf wildvreemden voor een officiële voetbalelftalfoto, inclusief twee rijen, een keeper en iemand die als bondscoach poseert.','Een officiële elftalfoto met elf instemmende onbekenden, twee rijen, een keeper en een bondscoach.','Legendary',100),
-('ade00008-0000-4000-8000-00000000000d','Help Fin aan een date na ADE','Help Fin aan een date na ADE, als Fin en de ander dat allebei leuk vinden.','Een foto ter bevestiging met toestemming van Fin en de ander; deel geen privéchats, telefoonnummers of contactgegevens.','Legendary',100);
+('ade00008-0000-4000-8000-00000000000d','Help Fin aan een date na ADE','Help Fin aan een date na ADE, als Fin en de ander dat allebei leuk vinden.','Een foto ter bevestiging met toestemming van Fin en de ander; deel geen privéchats, telefoonnummers of contactgegevens.','Legendary',100)
+ ) as row_data(id,title,description,evidence,difficulty,points);
+alter table public.festivals drop constraint if exists festivals_id_check;
+alter table public.festivals add constraint festivals_id_check check(id in ('DGTL','KI/KI','ADE'));
+insert into public.festivals(id,name) values('ADE','ADE') on conflict(id) do update set name=excluded.name;
 
 -- Templates affect future crews only; no submissions reference template rows.
-delete from public.challenge_templates where id not in(select id from ade_challenge_catalog);
+delete from public.challenge_templates where id not in(select id from jsonb_to_recordset(catalog) as catalog_row(id uuid,title text,description text,evidence text,difficulty text,points integer));
 insert into public.challenge_templates(id,title,description,evidence,festival,difficulty,points,repeatable)
-select id,title,description,evidence,'ADE',difficulty,points,false from ade_challenge_catalog
+select id,title,description,evidence,'ADE',difficulty,points,false from jsonb_to_recordset(catalog) as catalog_row(id uuid,title text,description text,evidence text,difficulty text,points integer)
 on conflict(id) do update set title=excluded.title,description=excluded.description,evidence=excluded.evidence,
  festival=excluded.festival,difficulty=excluded.difficulty,points=excluded.points,repeatable=false;
 
 -- Replace the active list in the one shared group; legacy private crews are unchanged.
-do $$declare community uuid;begin
  select crew_id into community from public.community_settings where singleton;
  if community is null then raise exception 'De gezamenlijke groep ontbreekt';end if;
- update public.challenges set active=false where crew_id=community and active and id not in(select id from ade_challenge_catalog);
+ update public.challenges set active=false where crew_id=community and active and id not in(select id from jsonb_to_recordset(catalog) as catalog_row(id uuid,title text,description text,evidence text,difficulty text,points integer));
  insert into public.challenges(id,crew_id,title,description,evidence,festival,difficulty,points,repeatable,active)
- select id,community,title,description,evidence,'ADE',difficulty,points,false,true from ade_challenge_catalog
+ select id,community,title,description,evidence,'ADE',difficulty,points,false,true from jsonb_to_recordset(catalog) as catalog_row(id uuid,title text,description text,evidence text,difficulty text,points integer)
  on conflict(id) do update set title=excluded.title,description=excluded.description,evidence=excluded.evidence,
  festival=excluded.festival,difficulty=excluded.difficulty,points=excluded.points,repeatable=false,active=true
  where challenges.crew_id=excluded.crew_id;
  if (select count(*) from public.challenges where crew_id=community and active)<>13 then
   raise exception 'De actieve catalogus kon niet volledig worden ingesteld; er is niets gewijzigd';
  end if;
-end$$;
+
+
+end
+$ade_catalog$;
 
 COMMIT;
 NOTIFY pgrst, 'reload schema';

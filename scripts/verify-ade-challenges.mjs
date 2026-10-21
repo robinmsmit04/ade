@@ -118,6 +118,14 @@ try {
     throw new Error(
       "Legacy evidence/points or future crew templates changed incorrectly",
     );
+  const standalone = readFileSync(
+    new URL(
+      "../supabase/migrations/202610210008_ade_challenges.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  sql(standalone); // Also verify dashboard autocommit: the whole update is one statement.
   sql(upgrade);
   if (
     snapshot() !== before ||
