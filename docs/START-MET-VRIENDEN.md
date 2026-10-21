@@ -16,7 +16,7 @@ Open [reset-test-data.sql](https://github.com/robinmsmit04/ade/blob/main/docs/re
 
 Verwacht: **Crew Control opgeschoond; accounts behouden**. `registraties`, `inzendingen`, `puntenregels` en `challengebestanden` moeten 0 zijn. De aantallen accounts, profielen en challenges blijven staan. Als challengebestanden nog bestaan, breekt de volledige transactie vóór het wissen af met een aanwijzing naar Storage. Een ontbrekende V3-update wordt ook vóór het wissen gemeld.
 
-Log opnieuw in of herlaad de app. Home en Tijdlijn zijn leeg, de foto-feed/het album zijn leeg en de challengeranglijst heeft geen punten. Bestaande accounts hoeven hun profiel niet opnieuw te maken. Nieuwe accounts krijgen de normale naam-/foto-onboarding en kunnen **Verder met Crew Control** kiezen. Er hoeft geen privécrew te worden aangemaakt.
+Log opnieuw in of herlaad de app. Home en Tijdlijn zijn leeg, de foto-feed/het album zijn leeg en de challengeranglijst heeft geen punten. Bestaande accounts hoeven hun profiel niet opnieuw te maken. Nieuwe accounts krijgen de normale naam-/foto-onboarding en komen automatisch in de gezamenlijke groep.
 
 ## 3. De publieke website delen
 
@@ -34,7 +34,7 @@ Vul host, poort, gebruikersnaam, wachtwoord/API-key en geverifieerde afzender ui
 
 Onder **Authentication → URL Configuration** hoort **Site URL** hetzelfde vaste productiedomein te zijn. De toegestane redirects moeten minimaal `https://JOUW-DOMEIN/auth/callback` bevatten; behoud de bestaande eigen invitecallback als die wordt gebruikt.
 
-Doe vóór breed delen één registratie met een adres van een vriend: bevestigingsmail ontvangen → link openen → inloggen → naam invullen → **Verder met Crew Control**. Nieuwe accounts blijven gewone leden en delen registraties standaard niet. Uitnodigen geeft niemand automatisch beheerrechten.
+Doe vóór breed delen één registratie met een adres van een vriend: bevestigingsmail ontvangen → link openen → inloggen → naam invullen → automatisch naar Home in de gezamenlijke groep. Nieuwe accounts blijven gewone leden en delen registraties standaard niet. Uitnodigen geeft niemand automatisch beheerrechten.
 
 ## Terugkoppeling
 

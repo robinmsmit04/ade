@@ -1,9 +1,6 @@
-import { CrewApp } from "@/components/crew-app";
-export default async function Invite({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
-  const { token } = await params;
-  return <CrewApp inviteToken={token} />;
+import { redirect } from "next/navigation";
+
+// Old invitation links lead to the same shared group as the public app URL.
+export default function Invite() {
+  redirect("/");
 }

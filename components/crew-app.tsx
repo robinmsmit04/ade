@@ -27,7 +27,6 @@ import {
   Lock,
   Download,
   Home,
-  Link2,
   Bell,
   PanelsTopLeft,
 } from "lucide-react";
@@ -43,7 +42,6 @@ import { Avatar } from "@/components/avatar";
 import { Dialog as Modal } from "@/components/dialog";
 import { QuickRecord } from "@/components/quick-record";
 import { ProfileSetup } from "@/components/profile-setup";
-import { CrewChooser } from "@/components/crew-chooser";
 import { CrewOverview } from "@/components/crew-overview";
 import { Button } from "@/components/ui/button";
 import { fetchRecords } from "@/lib/data";
@@ -77,7 +75,6 @@ type Tab =
   | "friend"
   | "more"
   | "crew"
-  | "crews"
   | "feed";
 const tabs: readonly Tab[] = [
   "live",
@@ -92,7 +89,6 @@ const tabs: readonly Tab[] = [
   "friend",
   "more",
   "crew",
-  "crews",
   "feed",
 ];
 const nav = [
@@ -126,7 +122,7 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <div className="empty">{children}</div>;
 }
 
-export function CrewApp({ inviteToken }: { inviteToken?: string }) {
+export function CrewApp() {
   const [selfProfile, setSelfProfile] = useState<Profile>();
   const [profileMenu, setProfileMenu] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -135,14 +131,12 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     { user_id: string; started_at: string | null; ended_at: string | null }[]
   >([]);
   const [partyLatest, setPartyLatest] = useState<RecordEntry | null>(null);
-  const [pendingInvite, setPendingInvite] = useState(inviteToken || "");
   const [communityId, setCommunityId] = useState("");
   const [summaries, setSummaries] = useState<CrewSummary[]>([]);
   const [timelineDay, setTimelineDay] = useState("");
   const [timelineLabel, setTimelineLabel] = useState("");
   const [crewDay, setCrewDay] = useState("");
   const [crewView, setCrewView] = useState<"members" | "ranking">("members");
-  const [inviteLink, setInviteLink] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [boot, setBoot] = useState(configured);
   const [tab, navigate] = useNavigation<Tab>("live", tabs);
@@ -205,11 +199,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     setScores([]);
   }, []);
   useEffect(() => {
-    if (inviteToken) sessionStorage.setItem("crew-invite", inviteToken);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- recover an invitation from browser session storage
-    setPendingInvite(
-      inviteToken || sessionStorage.getItem("crew-invite") || "",
-    );
+    sessionStorage.removeItem("crew-invite");
     if (!configured) return;
     const client = getSupabase();
     client.auth.getSession().then(({ data, error }) => {
@@ -237,7 +227,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
       }
     });
     return () => data.subscription.unsubscribe();
-  }, [clearData, inviteToken, navigate]);
+  }, [clearData, navigate]);
   useEffect(() => {
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -320,6 +310,18 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     if (profileResult.error) throw profileResult.error;
     if (!("onboarding_completed_at" in profileResult.data))
       throw new Error("De V2-databaseupdate moet nog worden uitgevoerd.");
+    // Everyone uses the existing shared group; profile setup is the final step.
+    if (
+      profileResult.data.profile_completed_at &&
+      (!profileResult.data.onboarding_completed_at ||
+        profileResult.data.active_crew_id !== enrollment.data)
+    ) {
+      const completed = await client.rpc("complete_onboarding", {
+        chosen_crew: enrollment.data,
+      });
+      if (completed.error) throw completed.error;
+      return loadCrews();
+    }
     const { data, error } = await client
       .from("crews")
       .select("*")
@@ -335,7 +337,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
     );
   }, [uid]);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initialise an authenticated external data subscription
     void loadCrews().catch((e) => setError(errorText(e)));
   }, [loadCrews]);
   const refresh = useCallback(
@@ -658,18 +659,7 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
         <div className="brand">
           <span className="brand-mark">cc</span> CREW CONTROL
         </div>
-        {!selfProfile.profile_completed_at ? (
-          <ProfileSetup profile={selfProfile} onSaved={loadCrews} />
-        ) : (
-          <CrewChooser
-            onboarding
-            inviteToken={pendingInvite}
-            onDone={async () => {
-              setPendingInvite("");
-              await loadCrews();
-            }}
-          />
-        )}
+        <ProfileSetup profile={selfProfile} onSaved={loadCrews} />
       </main>
     );
 
@@ -815,14 +805,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               Je account wordt klaargezet. Je sluit automatisch aan na
               e-mailbevestiging.
             </p>
-          )}
-          {pendingInvite && selfProfile?.onboarding_completed_at && (
-            <section className="notice mb-6">
-              <p>Je hebt een uitnodiging voor een crew.</p>
-              <Button variant="secondary" onClick={() => go("crews")}>
-                Uitnodiging bekijken
-              </Button>
-            </section>
           )}
           {(["challenges", "review", "leaderboard", "wall"] as Tab[]).includes(
             tab,
@@ -1055,39 +1037,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
               {crewView === "ranking" && (
                 <RecordRanking summaries={summaries} profiles={profiles} />
               )}
-            </section>
-          )}
-          {tab === "crews" && (
-            <section className="stack">
-              {crews.length > 1 && (
-                <label>
-                  Actieve crew
-                  <select
-                    value={cid}
-                    onChange={(e) =>
-                      void run(async () => {
-                        await rpc("complete_onboarding", {
-                          chosen_crew: e.target.value,
-                        });
-                      }, "Crew gewijzigd.")
-                    }
-                  >
-                    {crews.map((c) => (
-                      <option value={c.id} key={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <CrewChooser
-                inviteToken={pendingInvite}
-                onDone={async () => {
-                  setPendingInvite("");
-                  await loadCrews();
-                  go("live");
-                }}
-              />
             </section>
           )}
           {(tab === "timeline" || tab === "friend") && (
@@ -1767,33 +1716,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
           {tab === "admin" && (
             <section className="stack">
               <h1>Crewbeheer</h1>
-              {admin && (
-                <section className="card stack">
-                  <h2>Vrienden uitnodigen</h2>
-                  <Button
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        const token = await rpc("create_invite", { cid });
-                        setInviteLink(`${location.origin}/invite/${token}`);
-                      })
-                    }
-                  >
-                    <Link2 size={18} />
-                    Uitnodigingslink maken
-                  </Button>
-                  {inviteLink && (
-                    <label>
-                      Deel deze link
-                      <input
-                        readOnly
-                        value={inviteLink}
-                        onFocus={(e) => e.target.select()}
-                      />
-                    </label>
-                  )}
-                </section>
-              )}
               {!cid ? (
                 <Empty>Je account wordt klaargezet.</Empty>
               ) : (
@@ -2022,11 +1944,6 @@ export function CrewApp({ inviteToken }: { inviteToken?: string }) {
                 id: "settings" as const,
                 label: "Instellingen & privacy",
                 icon: Settings,
-              },
-              {
-                id: "crews" as const,
-                label: "Mijn crews & uitnodigingen",
-                icon: Users,
               },
               { id: "checkins" as const, label: "Check-ins", icon: Heart },
               ...(admin

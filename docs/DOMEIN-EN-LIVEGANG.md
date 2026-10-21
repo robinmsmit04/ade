@@ -103,7 +103,7 @@ Gebruik het nieuwe vaste domein in een privévenster en test met een of twee vri
 - Een nieuw account kan worden aangemaakt.
 - De mail komt aan, ook na controle van spam, met jouw afzenderdomein.
 - De bevestigingslink brengt de gebruiker naar je nieuwe app-domein; inloggen werkt.
-- Naam invullen en **Verder met Crew Control** brengt iedereen in dezelfde gezamenlijke omgeving. Een privécrew maken is optioneel.
+- Naam invullen brengt iedereen automatisch in dezelfde gezamenlijke omgeving.
 - Een registratie opslaan, tijdlijn bekijken en corrigeren werkt.
 - Registraties zijn privé totdat de eigenaar zelf delen aanzet. Delen en intrekken werken in een tweede account.
 - Camera/fotochallenge → Feed → beoordelen werkt. Voor de standaard twee goedkeuringen zijn de inzender plus twee andere accounts nodig. De punten komen precies eenmaal in de challengeranglijst.
@@ -150,7 +150,7 @@ Daarna kun je dit bericht delen, met jouw echte domein:
 
 > Crew Control staat klaar: https://app.jouwdomein.nl
 >
-> Maak een account, bevestig je e-mail en kies ‘Verder met Crew Control’. Je kunt je naam en eventueel een foto toevoegen. Registraties zijn standaard privé; je kiest zelf of je ze deelt. Fotochallenges en de Feed zijn voor onze gezamenlijke groep.
+> Maak een account, bevestig je e-mail en vul je naam in. Je komt automatisch in onze groep. Je kunt je naam en eventueel een foto toevoegen. Registraties zijn standaard privé; je kiest zelf of je ze deelt. Fotochallenges en de Feed zijn voor onze gezamenlijke groep.
 
 Alleen een URL delen maakt deelnemers geen beheerder. In de gezamenlijke omgeving kan iedereen met een bevestigd account deelnemen; wie expliciet registraties deelt, deelt die met huidige en toekomstige deelnemers van die omgeving.
 

@@ -67,7 +67,6 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
       page.getByRole("img", { name: "Voorbeeld van je profielfoto" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Verder", exact: true }).click();
-    await page.getByRole("button", { name: /Verder met Crew Control/ }).click();
     await expect(
       page.getByRole("heading", { name: `Hey, ${name}.`, exact: true }),
     ).toBeVisible();
@@ -206,90 +205,66 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
   }
 });
 
-test("optional private crew creation and invite onboarding persist the selected crew", async ({
+test("accounts including old invite links go directly to the same shared group", async ({
   browser,
   baseURL,
-}, testInfo) => {
+}) => {
   test.skip(!url || !key, "Requires isolated Supabase services.");
-  test.setTimeout(90000);
-  const cs = [client(), client()];
-  const users = cs.map(() => ({
-    email: `invite-v2-${crypto.randomUUID()}@example.com`,
-    password: crypto.randomUUID(),
-  }));
+  const clients = [client(), client()];
   const contexts = [];
-  const pages = [];
-  const crewName = `V2 vrienden ${crypto.randomUUID().slice(0, 5)}`;
+  const groupIds = [];
   try {
-    for (let i = 0; i < 2; i++) {
-      const signup = await cs[i].auth.signUp(users[i]);
+    for (let i = 0; i < clients.length; i++) {
+      const email = `shared-onboard-${crypto.randomUUID()}@example.com`;
+      const password = crypto.randomUUID();
+      const signup = await clients[i].auth.signUp({ email, password });
       if (signup.error) throw signup.error;
-    }
-    let link = "";
-    for (let i = 0; i < 2; i++) {
-      const ctx = await browser.newContext({
-        viewport:
-          testInfo.project.name === "mobile-chromium"
-            ? { width: 390, height: 844 }
-            : { width: 1280, height: 900 },
-      });
-      contexts.push(ctx);
-      const p = await ctx.newPage();
-      pages.push(p);
-      await p.goto(i === 0 ? baseURL! : link);
-      await p.getByLabel("E-mailadres").fill(users[i].email);
-      await p.getByLabel("Wachtwoord", { exact: true }).fill(users[i].password);
-      await p.getByRole("button", { name: "Inloggen", exact: true }).click();
-      await profile(p, i === 0 ? "V2 maker" : "V2 vriend");
-      if (i === 0) {
-        await p.getByRole("button", { name: /Een eigen crew maken/ }).click();
-        await p.getByLabel("Crewnaam", { exact: true }).fill(crewName);
-        await p
-          .getByRole("button", { name: "Crew aanmaken", exact: true })
-          .click();
-        await expect(
-          p.getByRole("heading", { name: "Hey, V2 maker." }),
-        ).toBeVisible();
-        await p
-          .getByRole("button", { name: "Mijn profiel", exact: true })
-          .click();
-        await p
-          .getByRole("dialog")
-          .getByRole("button", { name: "Crewbeheer", exact: true })
-          .click();
-        await p.getByRole("button", { name: "Uitnodigingslink maken" }).click();
-        link = await p.getByLabel("Deel deze link").inputValue();
-      } else {
-        await p.getByRole("button", { name: "Deelnemen", exact: true }).click();
-        await expect(
-          p.getByRole("heading", { name: "Hey, V2 vriend." }),
-        ).toBeVisible();
-      }
+      const context = await browser.newContext();
+      contexts.push(context);
+      const page = await context.newPage();
+      await page.goto(
+        i === 0 ? baseURL! : `${baseURL}/invite/${"a".repeat(48)}`,
+      );
+      await page.getByLabel("E-mailadres").fill(email);
+      await page.getByLabel("Wachtwoord", { exact: true }).fill(password);
+      await page.getByRole("button", { name: "Inloggen", exact: true }).click();
+      await profile(page, `Vriend ${i}`);
       await expect(
-        p.getByText(crewName, { exact: true }).first(),
+        page.getByRole("heading", { name: `Hey, Vriend ${i}.`, exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: /Verder met Crew Control|Een eigen crew maken|Ik heb een uitnodiging/,
+        }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Mijn profiel", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Mijn crews & uitnodigingen" }),
+      ).toHaveCount(0);
+      const uid = signup.data.user!.id;
+      const saved = await clients[i]
+        .from("profiles")
+        .select("active_crew_id,onboarding_completed_at")
+        .eq("id", uid)
+        .single();
+      if (saved.error) throw saved.error;
+      const community = await clients[i].rpc("ensure_community_membership");
+      if (community.error) throw community.error;
+      expect(saved.data.onboarding_completed_at).toBeTruthy();
+      expect(saved.data.active_crew_id).toBe(community.data);
+      groupIds.push(saved.data.active_crew_id);
+      await page.reload();
+      await expect(
+        page.getByRole("heading", { name: `Hey, Vriend ${i}.`, exact: true }),
       ).toBeVisible();
     }
-    const profiles = await Promise.all(
-      cs.map(async (c) => {
-        const uid = (await c.auth.getUser()).data.user!.id;
-        return c
-          .from("profiles")
-          .select("active_crew_id")
-          .eq("id", uid)
-          .single();
-      }),
-    );
-    expect(profiles[0].data?.active_crew_id).toBeTruthy();
-    expect(profiles[1].data?.active_crew_id).toBe(
-      profiles[0].data?.active_crew_id,
-    );
-    await pages[1].reload();
-    await expect(
-      pages[1].getByRole("heading", { name: "Hey, V2 vriend." }),
-    ).toBeVisible();
+    expect(groupIds[0]).toBeTruthy();
+    expect(groupIds[1]).toBe(groupIds[0]);
   } finally {
-    for (const ctx of contexts) await ctx.close();
-    for (const c of [...cs].reverse())
+    for (const context of contexts) await context.close();
+    for (const c of clients)
       if ((await c.auth.getSession()).data.session) await cleanup(c);
   }
 });

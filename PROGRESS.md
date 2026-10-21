@@ -125,3 +125,9 @@ De eindcontrole van de camera-/ranglijstupdate slaagt: 9 unit-tests, 20 desktop-
 - Reset op een afzonderlijke lokale databasekopie getest met behoudchecks, Storage-guard, herhaalbaarheid en gewone inschrijving na de reset. Kopie na afloop verwijderd. Het script heeft geen remote databaseoptie.
 - Gebruiker heeft custom SMTP niet ingesteld, maar heeft wel een eigen domein. `docs/DOMEIN-EN-LIVEGANG.md` beschrijft de volledige route: app-subdomein naar Vercel, publieke Production, Resend-verzenddomein/DNS, Supabase SMTP en callbacks, externe proefregistratie, definitieve reset en delen. Sleutels uitsluitend in de dashboards.
 - Geen domeinnaam, DNS-, Resend- of hosted Supabase-/Vercel-beheerverbinding beschikbaar. Geen externe wijzigingen of publieke mailbezorging geclaimd. De handleiding en opschoonbestanden worden naar GitHub gepusht voor uitvoering door de projecteigenaar.
+
+## Eén vaste groep
+
+De crewkeuzestap is verwijderd: na profielopslag voltooit de app onboarding in de bestaande gezamenlijke groep. Ook bestaande accounts met een onderbroken onboarding of andere actieve crew keren terug naar die groep. Het menu voor crewkeuze/-aanmaak en uitnodigingsbeheer is verwijderd; oude uitnodigingslinks verwijzen naar de publieke startpagina. Accounts en bestaande privécrewdata worden niet verwijderd of verplaatst. Geen nieuwe SQL of omgevingsvariabele nodig.
+
+TypeScript, lint en productiebuild geslaagd; vier gerichte browsercases tegen lokale productiebuild op desktop en mobiel controleren directe toegang, gedeelde groeps-ID, oude links, profielfoto, registratie en opnieuw inloggen. Hosted uitrol niet zelfstandig geverifieerd.
