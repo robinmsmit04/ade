@@ -59,7 +59,14 @@ export function validateMedia(file: Pick<File, "type" | "size">) {
     throw new Error("Bestand is groter dan 25 MB.");
   if (file.size === 0) throw new Error("Het bestand is leeg.");
 }
-export type Profile = { id: string; display_name: string };
+export type Profile = {
+  id: string;
+  display_name: string;
+  avatar_path?: string | null;
+  profile_completed_at?: string | null;
+  onboarding_completed_at?: string | null;
+  active_crew_id?: string | null;
+};
 export type Crew = { id: string; name: string; review_threshold: number };
 export type Member = {
   user_id: string;
@@ -116,4 +123,20 @@ export type Award = {
   points: number;
   festival: string;
   created_at: string;
+};
+
+export function dayKey(iso: string) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Amsterdam",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+export type CrewSummary = {
+  user_id: string;
+  last_substance: string;
+  last_taken_at: string;
+  today_count: number;
+  substance_counts: Record<string, number>;
 };

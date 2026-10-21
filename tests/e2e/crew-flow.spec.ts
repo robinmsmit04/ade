@@ -23,6 +23,16 @@ test("same public URL: automatic entry, private record, explicit sharing, realti
     for (let i = 0; i < 2; i++) {
       const { error } = await clients[i].auth.signUp(users[i]);
       if (error) throw error;
+      const community = await clients[i].rpc("ensure_community_membership");
+      const saved = await clients[i].rpc("save_my_profile", {
+        nickname: `Browser ${crypto.randomUUID().slice(0, 6)}`,
+        photo_path: null,
+      });
+      if (saved.error) throw saved.error;
+      const complete = await clients[i].rpc("complete_onboarding", {
+        chosen_crew: community.data,
+      });
+      if (complete.error) throw complete.error;
     }
     const pages = [];
     for (let i = 0; i < 2; i++) {
@@ -41,9 +51,18 @@ test("same public URL: automatic entry, private record, explicit sharing, realti
       await p.getByLabel("E-mailadres").fill(users[i].email);
       await p.getByLabel("Wachtwoord", { exact: true }).fill(password);
       await p.getByRole("button", { name: "Inloggen", exact: true }).click();
-      await expect(p.getByRole("heading", { name: /Jouw crew/ })).toBeVisible();
+      await expect(p.getByRole("heading", { name: /Hey,/ })).toBeVisible();
     }
     const [a, b] = pages;
+    await a
+      .getByRole("navigation", {
+        name:
+          testInfo.project.name === "mobile-chromium"
+            ? "Mobiele navigatie"
+            : "Hoofdnavigatie",
+      })
+      .getByRole("button", { name: "Crew", exact: true })
+      .click();
     await expect(
       b.getByRole("button", { name: "Crew aanmaken", exact: true }),
     ).toHaveCount(0);
@@ -51,47 +70,62 @@ test("same public URL: automatic entry, private record, explicit sharing, realti
       b.getByRole("button", { name: "Deelnemen", exact: true }),
     ).toHaveCount(0);
     await expect(
-      b.getByRole("button", { name: "Registreren", exact: true }),
+      b.getByRole("button", { name: "Nieuwe registratie", exact: true }),
     ).toBeVisible();
     const communities = await Promise.all(
       clients.map((c) => c.rpc("ensure_community_membership")),
     );
     expect(communities[0].data).toBeTruthy();
     expect(communities[1].data).toBe(communities[0].data);
-    await b.getByRole("button", { name: "Registreren", exact: true }).click();
+    await b
+      .getByRole("button", { name: "Nieuwe registratie", exact: true })
+      .click();
     const dialog = b.getByRole("dialog", { name: "Nieuwe registratie" });
-    await dialog.getByLabel("Middel", { exact: true }).fill(recordName);
+    await dialog.getByRole("button", { name: "Anders", exact: false }).click();
+    await dialog.getByLabel("Eigen label").fill(recordName);
+    await dialog.getByRole("button", { name: "Verder", exact: true }).click();
+    await dialog.locator("summary").click();
     await dialog.getByLabel("Opmerking (optioneel)").fill("Privé testnotitie");
     await contexts[1].setOffline(true);
     await dialog.getByRole("button", { name: "Registratie opslaan" }).click();
     await expect(dialog.getByRole("alert")).toContainText(
       "Je invoer is behouden",
     );
-    await expect(dialog.getByLabel("Middel", { exact: true })).toHaveValue(
-      recordName,
-    );
+    await expect(
+      dialog.getByRole("heading", { name: recordName, exact: true }),
+    ).toBeVisible();
     await contexts[1].setOffline(false);
     await dialog.getByRole("button", { name: "Registratie opslaan" }).click();
     await expect(dialog).not.toBeVisible();
     await expect(b.getByRole("status")).toContainText(
       "Registratie opgeslagen.",
     );
-    await expect(a.getByText(recordName, { exact: true })).toHaveCount(0);
-    await b.getByRole("button", { name: "Mijn instellingen" }).click();
+    await expect(
+      a.locator(".crew-list").getByText(recordName, { exact: false }),
+    ).toHaveCount(0);
+    await b.getByRole("button", { name: "Mijn profiel", exact: true }).click();
+    await b
+      .getByRole("dialog", { name: "Jouw profiel" })
+      .getByRole("button", { name: "Instellingen & privacy" })
+      .click();
     b.once("dialog", (d) => d.accept());
     await b.getByRole("checkbox", { name: /Deel mijn registraties/ }).click();
     await expect(b.getByRole("status")).toContainText("Delen ingeschakeld.");
     await expect(
       b.getByRole("checkbox", { name: /Deel mijn registraties/ }),
     ).toBeChecked();
-    await expect(a.getByText(recordName, { exact: true })).toBeVisible({
+    await expect(
+      a.locator(".crew-list").getByText(recordName, { exact: false }),
+    ).toBeVisible({
       timeout: 20000,
     });
     await b.getByRole("checkbox", { name: /Deel mijn registraties/ }).click();
     await expect(
       b.getByRole("checkbox", { name: /Deel mijn registraties/ }),
     ).not.toBeChecked();
-    await expect(a.getByText(recordName, { exact: true })).toHaveCount(0, {
+    await expect(
+      a.locator(".crew-list").getByText(recordName, { exact: false }),
+    ).toHaveCount(0, {
       timeout: 20000,
     });
     const mobile = testInfo.project.name === "mobile-chromium";
@@ -100,25 +134,32 @@ test("same public URL: automatic entry, private record, explicit sharing, realti
     });
     await nav
       .getByRole("button", {
-        name: mobile ? "Tijdlijn" : "Mijn tijdlijn",
+        name: "Tijdlijn",
         exact: true,
       })
       .click();
-    await expect(b.getByText(recordName, { exact: true })).toBeVisible();
+    await expect(
+      b.getByRole("heading", { name: recordName, exact: true }),
+    ).toBeVisible();
     await b.getByRole("button", { name: "Bewerken", exact: true }).click();
     await b
       .getByRole("dialog")
       .getByLabel("Middel", { exact: true })
       .fill(editedName);
     await b.getByRole("button", { name: "Registratie opslaan" }).click();
-    await expect(b.getByText(editedName, { exact: true })).toBeVisible();
+    await expect(
+      b.locator(".last-registration").getByText(editedName, { exact: true }),
+    ).toBeVisible();
+    await nav.getByRole("button", { name: "Tijdlijn", exact: true }).click();
     await b.screenshot({
       path: testInfo.outputPath("timeline.png"),
       fullPage: true,
     });
     b.once("dialog", (d) => d.accept());
     await b.getByRole("button", { name: "Verwijderen", exact: true }).click();
-    await expect(b.getByText(editedName, { exact: true })).toHaveCount(0);
+    await expect(
+      b.getByRole("heading", { name: editedName, exact: true }),
+    ).toHaveCount(0);
     expect(
       await b.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -152,15 +193,15 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
   const authorName = `Foto ${crypto.randomUUID().slice(0, 8)}`;
   const mobile = testInfo.project.name === "mobile-chromium";
   async function openTab(p: import("@playwright/test").Page, label: string) {
-    if (mobile) {
+    const primary = p.getByRole("navigation", {
+      name: mobile ? "Mobiele navigatie" : "Hoofdnavigatie",
+    });
+    await primary
+      .getByRole("button", { name: "Challenges", exact: true })
+      .click();
+    if (label !== "Challenges")
       await p
-        .getByRole("navigation", { name: "Mobiele navigatie" })
-        .getByRole("button", { name: "Meer", exact: true })
-        .click();
-      await p.getByRole("button", { name: label, exact: false }).last().click();
-    } else
-      await p
-        .getByRole("navigation", { name: "Hoofdnavigatie" })
+        .getByRole("navigation", { name: "Challenges navigatie" })
         .getByRole("button", { name: label, exact: false })
         .click();
   }
@@ -176,6 +217,17 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
         },
       });
       if (error) throw error;
+      const community = await clients[i].rpc("ensure_community_membership");
+      const saved = await clients[i].rpc("save_my_profile", {
+        nickname:
+          i === 1 ? authorName : `Review ${crypto.randomUUID().slice(0, 6)}`,
+        photo_path: null,
+      });
+      if (saved.error) throw saved.error;
+      const complete = await clients[i].rpc("complete_onboarding", {
+        chosen_crew: community.data,
+      });
+      if (complete.error) throw complete.error;
     }
     for (let i = 0; i < 3; i++) {
       const ctx = await browser.newContext({
@@ -192,7 +244,7 @@ test("photo challenge upload, two browser reviewers, leaderboard and private wal
       await p.getByLabel("E-mailadres").fill(users[i].email);
       await p.getByLabel("Wachtwoord", { exact: true }).fill(password);
       await p.getByRole("button", { name: "Inloggen", exact: true }).click();
-      await expect(p.getByRole("heading", { name: /Jouw crew/ })).toBeVisible();
+      await expect(p.getByRole("heading", { name: /Hey,/ })).toBeVisible();
     }
     const [reviewer, author, reviewer2] = pages;
     await openTab(author, "Challenges");

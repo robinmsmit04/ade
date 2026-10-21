@@ -33,7 +33,7 @@ export function AuthForm() {
         const { error } = await client.auth.signUp({
           ...values,
           options: {
-            emailRedirectTo: `${location.origin}/auth/callback`,
+            emailRedirectTo: `${location.origin}/auth/callback${sessionStorage.getItem("crew-invite") ? "?next=/invite/" + sessionStorage.getItem("crew-invite") : ""}`,
             data: { display_name: values.email.split("@")[0] },
           },
         });

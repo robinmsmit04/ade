@@ -81,3 +81,12 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Lokale migratie toegepast; 18 integratietests en de SQL-test voor onbevestigd → bevestigd geslaagd. Typecheck, lint en unit-tests worden opnieuw gecontroleerd, evenals de gewijzigde browserflows.
 - Hosted actie blijft noodzakelijk zonder accounttoegang: in Supabase SQL Editor uitsluitend `docs/enable-shared-platform.sql` uitvoeren. Volledige installatie in `docs/supabase-setup.sql` bijgewerkt voor nieuwe lege projecten.
 - Eindcontrole van deze wijziging geslaagd: typecheck, lint, 7 unit-tests, 18 integratietests, productiebuild en 8 browsercases tegen productiemodus (desktop en mobiel). De SQL-test bevestigt bovendien dat de gezamenlijke omgeving behouden blijft wanneer de laatste beheerder het eigen account verwijdert. De handmatige update is lokaal opnieuw uitgevoerd zonder dubbele challenges of nieuwe deeltoestemming.
+
+## Crew Control V2
+
+- Bestaande applicatie omgebouwd naar persoonlijk Home, twee-stapsregistratie, gefilterde tijdlijn, crewkaarten en vier hoofdtabbladen. Challenges behouden reviews, leaderboard en private wall als subnavigatie. Profielmenu bevat privacy, instellingen, crewkeuze en beheer.
+- Nieuwe accounts krijgen persistente naam-/foto-onboarding en kunnen gezamenlijk doorgaan, een privécrew maken of een uitnodiging volgen. Geen verplichte crewcreatie; bestaande bevestigde accounts slaan de nieuwe stappen over.
+- Migratie 004 voegt private profielfoto’s en gecontroleerde profiel-/crewfuncties toe. Tijdlijn en neutrale statistieken volgen caller-RLS, ook voor aantallen. Geen punten voor middelenregistraties; de bestaande record- en challengebeveiliging blijft behouden.
+- Lokale controles: 26 integratietests, 7 unit-tests, typecheck, lint en productiebuild geslaagd. 12 desktop-/mobiele Chromium-browsercases tegen productiemodus; aanvullende regressiecontrole voorkomt foutmeldingen na uitloggen en onjuist doorwerken van een crew-datumfilter op Home.
+- Hosted vervolgstap: voer eenmaal het volledige `docs/enable-mobile-v2.sql` uit via Supabase SQL Editor, met de eerste drie migraties als bestaande basis. Verwachte status: `Crew Control V2 ingesteld`. Geen nieuwe omgevingsvariabelen nodig. Nieuwe lege projecten gebruiken de volledige installatie met vier migraties.
+- Geen hosted Supabase-/Vercel-beheerrechten in deze sessie. Native Git-push kan de gekoppelde Vercel-build activeren; publieke readiness is niet vanuit hier bevestigd. WebKit/fysieke iPhone niet getest.

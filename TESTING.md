@@ -9,9 +9,9 @@ Uitgevoerd op 21 oktober 2026 in deze cloudomgeving, met Node 24, PostgreSQL 17 
 | TypeScript `npm run typecheck`               | Geslaagd                                                                                                        |
 | ESLint `npm run lint`                        | Geslaagd, zonder meldingen                                                                                      |
 | Vitest unit                                  | 7 tests geslaagd                                                                                                |
-| Vitest Supabase-integratie                   | 12 tests geslaagd                                                                                               |
-| Playwright Chromium desktop                  | 4 tests geslaagd                                                                                                |
-| Playwright mobiel Chromium                   | 4 tests geslaagd, ook in productiemodus, browserflows op 390 × 844                                              |
+| Vitest Supabase-integratie                   | 26 tests geslaagd                                                                                               |
+| Playwright Chromium desktop                  | 6 tests geslaagd                                                                                                |
+| Playwright mobiel Chromium                   | 6 tests geslaagd, in productiemodus; Pixel 7 en 390 × 844                                                       |
 | Productiebuild Next.js                       | Geslaagd, ook na een schone npm ci                                                                              |
 | `npm audit --omit=dev --audit-level=high`    | 0 kwetsbaarheden gemeld                                                                                         |
 | Kleine lokale stack opnieuw starten          | Geslaagd; migratieledger voorkomt dubbel toepassen                                                              |
@@ -82,3 +82,11 @@ Zes aanvullende integratietests controleren automatische inschrijving, één ged
 Ook `supabase/tests/shared-platform.sql` is uitgevoerd tegen de lokale database: een onbevestigd account kan niet aansluiten, e-mailbevestiging activeert deelname en geeft uitsluitend memberrechten met delen uit. De SQL-fixture rolt terug. Deze controle vervangt geen daadwerkelijke hosted bevestigingsmail; de gebruiker heeft die flow eerder zelf bevestigd. De nieuwe hosted migratie moet nog door de projecteigenaar worden uitgevoerd.
 
 Eindcontrole van de gezamenlijke instapflow: typecheck, lint, 7 unit-tests, 18 integratietests, productiebuild en alle 8 Chromium-browsercases tegen productiemodus geslaagd. De SQL-fixture bewijst ook dat accountverwijdering van de laatste beheerder het platform behoudt. De bestaande-installatie-update is lokaal herhaald zonder dubbele inschrijving of challenges. Hosted activering blijft de SQL-stap voor de projecteigenaar.
+
+## V2: actuele eindcontrole
+
+De huidige suite bevat 26 integratietests: 12 oorspronkelijke backendtests, 6 voor de gezamenlijke omgeving en 8 voor V2. De acht aanvullingen toetsen persistente onboarding, private avatars en geselecteerde foto’s, naam-/fotorechten en geweigerde directe profielwrites, crewkeuze met uitnodigingen, afgeschermde samenvattingen zonder privé-aantallen, exacte label-/dag-/eigenaarfilters, intrekken en verwijdering van avatarobjecten vóór gegevenswissen. Amsterdamse daggrenzen worden met vaste historische timestamps gecontroleerd. Alle 26 slagen tegen echte lokale diensten.
+
+Twaalf browsercases slagen tegen de lokale productiebuild: zes scenario’s op desktop en mobiel Chromium. Naast auth/PWA en de bestaande registratie-/challengeflows testen ze registratie via de interface, naam en een echt verwerkt foto-object met preview, onboarding naar Home, de primaire knop boven de vouw, twee taps tot opslaan, correcte opgeslagen timestamp, tijdlijnfilter, herladen, uitloggen en opnieuw inloggen zonder herhaalde onboarding of achtergebleven foutmelding. Een historisch crewfilter verandert de werkelijke laatste registratie op Home niet. Een tweede scenario maakt een privécrew en laat een tweede nieuw account via de uitnodigings-URL aansluiten; beide bewaren de actieve crew. De bestaande twee-/driesessieflows toetsen behouden offline-invoer, delen/intrekken, corrigeren/wissen, foto-upload, twee reviews, leaderboard en wall via de nieuwe navigatie.
+
+Typecheck, lint, 7 unit-tests en productiebuild slagen. De browser uploadt een foto bij mobiel formaat; fysieke camera, iPhone Safari/WebKit en hosted e-mailbevestiging zijn hiermee niet getest. WebKit-download blijft in deze omgeving geblokkeerd. De gebruiker meldde eerder dat de hosted bevestigingsmail en login werkten; V2 heeft geen eigen SMTP of nieuwe publieke credentials nodig. Hosted migratie 004 en de Vercel-uitrol blijven afzonderlijk te controleren.

@@ -14,9 +14,7 @@ test("configured app requires authentication; unconfigured app is honest and res
       page.getByRole("button", { name: "Account aanmaken", exact: true }),
     ).toBeVisible();
   } else {
-    await expect(
-      page.getByRole("heading", { name: /Jouw crew/ }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Hey,/ })).toBeVisible();
     await expect(page.getByRole("status")).toContainText(
       "Supabase is nog niet ingesteld",
     );
@@ -33,11 +31,9 @@ test("configured app requires authentication; unconfigured app is honest and res
     await expect(
       page.getByText("Challenges verschijnen zodra je account"),
     ).toBeVisible();
-    await nav
-      .getByRole("button", {
-        name: page.viewportSize()!.width < 700 ? "Scores" : "Leaderboard",
-        exact: true,
-      })
+    await page
+      .getByRole("navigation", { name: "Challenges navigatie" })
+      .getByRole("button", { name: "Leaderboard" })
       .click();
     await expect(
       page.getByRole("heading", { name: "De ranglijst." }),

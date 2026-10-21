@@ -13,19 +13,23 @@ import {
   Heart,
   LogOut,
   Plus,
-  Radio,
   Settings,
   Shield,
   Trophy,
   Users,
-  X,
   WifiOff,
-  LoaderCircle,
   Music2,
   Lock,
   Download,
-  Menu,
+  Home,
+  Link2,
 } from "lucide-react";
+import { Avatar } from "@/components/avatar";
+import { Dialog as Modal } from "@/components/dialog";
+import { QuickRecord } from "@/components/quick-record";
+import { ProfileSetup } from "@/components/profile-setup";
+import { CrewChooser } from "@/components/crew-chooser";
+import { CrewOverview } from "@/components/crew-overview";
 import { Button } from "@/components/ui/button";
 import { fetchRecords } from "@/lib/data";
 import { AuthForm } from "@/components/auth-form";
@@ -34,9 +38,9 @@ import {
   challengeSchema,
   elapsed,
   formatDate,
-  localInput,
   recordSchema,
   validateMedia,
+  type CrewSummary,
   type Challenge,
   type Checkin,
   type Crew,
@@ -57,12 +61,17 @@ type Tab =
   | "settings"
   | "admin"
   | "friend"
-  | "more";
+  | "more"
+  | "crew"
+  | "crews";
 const nav = [
-  { id: "live", label: "Crew Live", icon: Radio },
-  { id: "timeline", label: "Mijn tijdlijn", icon: Clock },
-  { id: "checkins", label: "Check-ins", icon: Heart },
+  { id: "live", label: "Home", icon: Home },
+  { id: "timeline", label: "Tijdlijn", icon: Clock },
+  { id: "crew", label: "Crew", icon: Users },
   { id: "challenges", label: "Challenges", icon: Flag },
+] as const;
+const challengeNav = [
+  { id: "challenges", label: "Opdrachten", icon: Flag },
   { id: "review", label: "Beoordelen", icon: Check },
   { id: "leaderboard", label: "Leaderboard", icon: Trophy },
   { id: "wall", label: "Wall of Shame", icon: Camera },
@@ -81,78 +90,8 @@ function errorText(e: unknown) {
       ? String(e.message)
       : "Dat lukte niet. Probeer opnieuw.";
 }
-function Avatar({ name }: { name: string }) {
-  return (
-    <span className="avatar" aria-hidden="true">
-      {name.slice(0, 2).toUpperCase()}
-    </span>
-  );
-}
 function Empty({ children }: { children: React.ReactNode }) {
   return <div className="empty">{children}</div>;
-}
-function Modal({
-  title,
-  close,
-  children,
-}: {
-  title: string;
-  close: () => void;
-  children: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement;
-    const node = ref.current;
-    node?.focus();
-    function key(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
-      if (e.key === "Tab" && node) {
-        const els = [
-          ...node.querySelectorAll<HTMLElement>(
-            "button:not([disabled]),input:not([disabled]),select,textarea,a[href]",
-          ),
-        ];
-        const first = els[0],
-          last = els.at(-1);
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    }
-    document.addEventListener("keydown", key);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", key);
-      document.body.style.overflow = prevOverflow;
-      previous?.focus();
-    };
-  }, [close]);
-  return (
-    <div className="modal">
-      <div
-        ref={ref}
-        tabIndex={-1}
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <div className="section-title">
-          <h2>{title}</h2>
-          <Button variant="ghost" aria-label="Sluiten" onClick={close}>
-            <X size={20} />
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
 }
 function Proof({ submission }: { submission: Submission }) {
   const [url, setUrl] = useState("");
@@ -196,7 +135,16 @@ function Proof({ submission }: { submission: Submission }) {
   );
 }
 
-export function CrewApp() {
+export function CrewApp({ inviteToken }: { inviteToken?: string }) {
+  const [selfProfile, setSelfProfile] = useState<Profile>();
+  const [profileMenu, setProfileMenu] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState(inviteToken || "");
+  const [communityId, setCommunityId] = useState("");
+  const [summaries, setSummaries] = useState<CrewSummary[]>([]);
+  const [timelineDay, setTimelineDay] = useState("");
+  const [timelineLabel, setTimelineLabel] = useState("");
+  const [crewDay, setCrewDay] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [boot, setBoot] = useState(configured);
   const [tab, setTab] = useState<Tab>("live");
@@ -217,7 +165,6 @@ export function CrewApp() {
   const [notice, setNotice] = useState("");
   const [online, setOnline] = useState(true);
   const [connected, setConnected] = useState(false);
-  const [lastSync, setLastSync] = useState("");
   const [recordOpen, setRecordOpen] = useState(false);
   const [editing, setEditing] = useState<RecordEntry | null>(null);
   const [selected, setSelected] = useState<Challenge | null>(null);
@@ -242,6 +189,7 @@ export function CrewApp() {
     profiles.find((p) => p.id === id)?.display_name ||
     (id === uid ? "Jij" : "Crewlid");
   const clearData = useCallback(() => {
+    setSummaries([]);
     setRecords([]);
     setCheckins([]);
     setSubmissions([]);
@@ -251,9 +199,13 @@ export function CrewApp() {
     setChallenges([]);
     setSharing(false);
     setScores([]);
-    setLastSync("");
   }, []);
   useEffect(() => {
+    if (inviteToken) sessionStorage.setItem("crew-invite", inviteToken);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- recover an invitation from browser session storage
+    setPendingInvite(
+      inviteToken || sessionStorage.getItem("crew-invite") || "",
+    );
     if (!configured) return;
     const client = getSupabase();
     client.auth.getSession().then(({ data, error }) => {
@@ -268,10 +220,13 @@ export function CrewApp() {
         clearData();
         setCrews([]);
         setCid("");
+        setSelfProfile(undefined);
+        setError("");
+        setNotice("");
       }
     });
     return () => data.subscription.unsubscribe();
-  }, [clearData]);
+  }, [clearData, inviteToken]);
   useEffect(() => {
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -303,14 +258,26 @@ export function CrewApp() {
       throw new Error(
         "Je account kon nog niet worden klaargezet. De beheerder moet de platformupdate uitvoeren, of probeer het opnieuw.",
       );
+    const profileResult = await client
+      .from("profiles")
+      .select("*")
+      .eq("id", uid)
+      .single();
+    if (profileResult.error) throw profileResult.error;
+    if (!("onboarding_completed_at" in profileResult.data))
+      throw new Error("De V2-databaseupdate moet nog worden uitgevoerd.");
     const { data, error } = await client
       .from("crews")
       .select("*")
-      .eq("id", enrollment.data);
+      .order("name");
     if (error) throw error;
+    setSelfProfile(profileResult.data);
+    setCommunityId(enrollment.data);
     setCrews(data || []);
-    setCid((current) =>
-      data?.some((c) => c.id === current) ? current : data?.[0]?.id || "",
+    setCid(
+      data?.some((c) => c.id === profileResult.data.active_crew_id)
+        ? profileResult.data.active_crew_id
+        : enrollment.data,
     );
   }, [uid]);
   useEffect(() => {
@@ -327,7 +294,16 @@ export function CrewApp() {
         const responses = await Promise.all([
           client.from("members").select("*").eq("crew_id", cid),
           client.from("profiles").select("*"),
-          fetchRecords(client, cid, recordLimit),
+          fetchRecords(client, cid, recordLimit, {
+            owner:
+              tab === "timeline" ? uid : tab === "friend" ? friend : undefined,
+            day:
+              tab === "timeline" || tab === "friend" ? timelineDay : undefined,
+            label:
+              tab === "timeline" || tab === "friend"
+                ? timelineLabel
+                : undefined,
+          }),
           client
             .from("checkins")
             .select("*")
@@ -352,6 +328,15 @@ export function CrewApp() {
             .eq("user_id", uid)
             .maybeSingle(),
           client.from("reviews").select("*"),
+          client.rpc("crew_record_summary", {
+            cid,
+            day_filter:
+              (tab === "crew"
+                ? crewDay
+                : tab === "friend"
+                  ? timelineDay
+                  : "") || null,
+          }),
           client.rpc("leaderboard", {
             cid,
             festival_filter: festival === "Alle" ? null : festival,
@@ -360,7 +345,7 @@ export function CrewApp() {
         ]);
         if (gen !== generation.current) return;
         for (const r of responses) if (r.error) throw r.error;
-        const [m, p, r, c, ch, s, cons, rev, sc] = responses;
+        const [m, p, r, c, ch, s, cons, rev, summary, sc] = responses;
         if (!m.data?.some((x) => x.user_id === uid)) {
           clearData();
           await loadCrews();
@@ -377,7 +362,7 @@ export function CrewApp() {
         );
         setReviews(rev.data || []);
         setScores(sc.data || []);
-        setLastSync(new Date().toISOString());
+        setSummaries(summary.data || []);
       } catch (e) {
         if (gen === generation.current) {
           clearData();
@@ -387,7 +372,20 @@ export function CrewApp() {
         if (gen === generation.current) setLoading(false);
       }
     },
-    [cid, uid, recordLimit, festival, scoreDay, clearData, loadCrews],
+    [
+      cid,
+      uid,
+      recordLimit,
+      festival,
+      scoreDay,
+      clearData,
+      loadCrews,
+      tab,
+      friend,
+      timelineDay,
+      timelineLabel,
+      crewDay,
+    ],
   );
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clear sensitive results immediately before replacing the crew subscription
@@ -438,6 +436,9 @@ export function CrewApp() {
     setNotice("");
     try {
       await fn();
+      // Sign-out/account deletion must not reload data using the old identity.
+      const current = await getSupabase().auth.getSession();
+      if (current.data.session?.user.id !== uid) return;
       if (success) setNotice(success);
       await loadCrews();
       await refresh(true);
@@ -462,6 +463,8 @@ export function CrewApp() {
   }
   function go(t: Tab) {
     setTab(t);
+    setProfileMenu(false);
+    if (t === "live") setCrewDay("");
     setFestival("Alle");
     setDifficulty("Alle");
     setScoreDay("");
@@ -481,7 +484,8 @@ export function CrewApp() {
     setRecordOpen(true);
   }
   const myRecords = records.filter((r) => r.user_id === uid);
-  const sharedRecords = records.filter((r) => r.user_id !== uid);
+  const lastPersonal = summaries.find((s) => s.user_id === uid);
+
   const filteredChallenges = challenges.filter(
     (c) =>
       c.active &&
@@ -503,6 +507,47 @@ export function CrewApp() {
       </main>
     );
   if (configured && !session) return <AuthForm />;
+  if (session && !selfProfile)
+    return (
+      <main className="auth stack">
+        <p
+          role={error ? "alert" : "status"}
+          className={error ? "notice error" : "notice"}
+        >
+          {error || "Je profiel laden…"}
+        </p>
+        {error && (
+          <Button
+            onClick={() =>
+              void loadCrews().catch((e) => setError(errorText(e)))
+            }
+          >
+            Opnieuw proberen
+          </Button>
+        )}
+      </main>
+    );
+  if (session && selfProfile && !selfProfile.onboarding_completed_at)
+    return (
+      <main className="onboarding-shell">
+        <div className="brand">
+          <span className="brand-mark">cc</span> CREW CONTROL
+        </div>
+        {!selfProfile.profile_completed_at ? (
+          <ProfileSetup profile={selfProfile} onSaved={loadCrews} />
+        ) : (
+          <CrewChooser
+            onboarding
+            inviteToken={pendingInvite}
+            onDone={async () => {
+              setPendingInvite("");
+              await loadCrews();
+            }}
+          />
+        )}
+      </main>
+    );
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -517,30 +562,30 @@ export function CrewApp() {
         <nav className="side-nav" aria-label="Hoofdnavigatie">
           {nav.map((n) => (
             <button
-              className={tab === n.id ? "active" : ""}
+              className={
+                tab === n.id ||
+                (n.id === "challenges" &&
+                  ["review", "leaderboard", "wall"].includes(tab))
+                  ? "active"
+                  : ""
+              }
               key={n.id}
               onClick={() => go(n.id)}
             >
               <n.icon size={18} />
               {n.label}
-              {n.id === "review" && pending.length > 0 && (
-                <span className="ml-auto">{pending.length}</span>
-              )}
             </button>
           ))}
         </nav>
         <div className="mt-auto pt-12 stack">
-          <button
-            className="flex gap-3 text-sm muted"
-            onClick={() => go("settings")}
-          >
-            <Settings size={18} /> Instellingen
-          </button>
-          <button
-            className="flex gap-3 text-sm muted"
-            onClick={() => go("admin")}
-          >
-            <Shield size={18} /> Beheer
+          <button className="profile-nav" onClick={() => setProfileMenu(true)}>
+            <Avatar
+              name={selfProfile?.display_name || "CC"}
+              path={selfProfile?.avatar_path}
+            />
+            <span>
+              Mijn profiel<small>Instellingen & privacy</small>
+            </span>
           </button>
           <p className="eyebrow mt-4">GOOD TIMES. GOOD COMPANY.</p>
         </div>
@@ -550,7 +595,7 @@ export function CrewApp() {
           <div className="flex items-center gap-3">
             <span className="brand-mark md:hidden">cc</span>
             <div>
-              <p className="eyebrow">ADE / YOUR PRIVATE SPACE</p>
+              <p className="eyebrow">ADE · SAMEN OP PAD</p>
               <p className="text-sm font-bold mt-2">
                 {crew?.name || "Crew Control"}{" "}
                 <ArrowUpRight
@@ -569,10 +614,13 @@ export function CrewApp() {
               {!online ? "OFFLINE" : connected ? "LIVE" : "VERBINDEN"}
             </span>
             <button
-              onClick={() => go("settings")}
-              aria-label="Mijn instellingen"
+              onClick={() => setProfileMenu(true)}
+              aria-label="Mijn profiel"
             >
-              <Avatar name={uid ? name(uid) : "CC"} />
+              <Avatar
+                name={selfProfile?.display_name || "CC"}
+                path={selfProfile?.avatar_path}
+              />
             </button>
           </div>
         </header>
@@ -619,157 +667,237 @@ export function CrewApp() {
               e-mailbevestiging.
             </p>
           )}
+          {pendingInvite && selfProfile?.onboarding_completed_at && (
+            <section className="notice mb-6">
+              <p>Je hebt een uitnodiging voor een crew.</p>
+              <Button variant="secondary" onClick={() => go("crews")}>
+                Uitnodiging bekijken
+              </Button>
+            </section>
+          )}
+          {(["challenges", "review", "leaderboard", "wall"] as Tab[]).includes(
+            tab,
+          ) && (
+            <nav className="challenge-subnav" aria-label="Challenges navigatie">
+              {challengeNav.map((n) => (
+                <button
+                  key={n.id}
+                  className={tab === n.id ? "active" : ""}
+                  onClick={() => go(n.id)}
+                  aria-current={tab === n.id ? "page" : undefined}
+                >
+                  <n.icon size={16} />
+                  {n.label}
+                  {n.id === "review" && pending.length > 0 ? (
+                    <span>{pending.length}</span>
+                  ) : null}
+                </button>
+              ))}
+            </nav>
+          )}
           {tab === "live" && (
-            <>
+            <section className="home-screen">
+              <header className="home-heading">
+                <div>
+                  <p className="eyebrow">
+                    {new Intl.DateTimeFormat("nl-NL", {
+                      timeZone: "Europe/Amsterdam",
+                      weekday: "long",
+                      day: "numeric",
+                      month: "short",
+                    }).format(new Date())}
+                  </p>
+                  <h1>
+                    Hey, {selfProfile?.display_name || "jij"}
+                    <span className="text-lime-300">.</span>
+                  </h1>
+                  <p className="muted text-sm">Fijn dat je erbij bent.</p>
+                </div>
+                <span className="live-dot">
+                  <span className={connected ? "bg-lime-300" : "bg-zinc-500"} />
+                  {connected ? "Live" : "Verbinden"}
+                </span>
+              </header>
+              <div className="last-registration">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="eyebrow">JOUW LAATSTE REGISTRATIE</span>
+                  <Clock size={17} className="muted" />
+                </div>
+                {lastPersonal ? (
+                  <>
+                    <div className="elapsed-big">
+                      {elapsed(lastPersonal.last_taken_at)}
+                      <small>geleden</small>
+                    </div>
+                    <div className="last-record-detail">
+                      <strong>{lastPersonal.last_substance}</strong>
+                      <span>{formatDate(lastPersonal.last_taken_at)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>Nog niets vastgelegd.</h2>
+                    <p className="muted text-sm">
+                      Je eerste registratie verschijnt hier.
+                    </p>
+                  </>
+                )}
+                <p className="historical-note">
+                  Historische informatie · geen advies over (her)gebruik
+                </p>
+              </div>
+              <Button
+                className="home-register"
+                onClick={newRecord}
+                disabled={configured && (!cid || loading)}
+              >
+                <Plus size={22} />
+                Nieuwe registratie
+              </Button>
+              <section className="home-crew">
+                <div className="section-title">
+                  <h2>Jouw mensen</h2>
+                  <button
+                    className="text-lime-300 text-sm"
+                    onClick={() => go("crew")}
+                  >
+                    Iedereen <ArrowUpRight size={14} className="inline" />
+                  </button>
+                </div>
+                <CrewOverview
+                  members={members}
+                  profiles={profiles}
+                  summaries={summaries}
+                  uid={uid}
+                  compact
+                  open={(id) => {
+                    setFriend(id);
+                    setTimelineDay("");
+                    setTimelineLabel("");
+                    go("friend");
+                  }}
+                />
+              </section>
+              <button className="checkin-prompt" onClick={() => go("checkins")}>
+                <Heart size={19} />
+                <span>
+                  Hoe gaat het met je?<small>Even inchecken bij je crew</small>
+                </span>
+                <ChevronRight size={18} />
+              </button>
+              <p className="home-safety">
+                Direct hulp nodig? Zoek de EHBO of bel 112 bij acuut gevaar.
+              </p>
+            </section>
+          )}
+          {tab === "crew" && (
+            <section className="stack">
               <div className="section-title">
                 <div>
-                  <p className="eyebrow mb-3">HET WEEKEND IS VAN ONS</p>
+                  <p className="eyebrow mb-2">{crew?.name || "JOUW MENSEN"}</p>
                   <h1>
-                    Jouw crew. <span className="text-lime-300">Live.</span>
+                    De crew<span className="text-lime-300">.</span>
                   </h1>
-                  <p className="muted mt-3 text-sm">
-                    Samen op pad, met aandacht voor elkaar.
-                  </p>
                 </div>
-                <Button aria-label="Registreren" onClick={newRecord}>
-                  <Plus size={18} />
-                  <span className="desktop-label">Registreren</span>
+                <span className="pill">{members.length} leden</span>
+              </div>
+              <p className="muted text-sm leading-6">
+                Je ziet alleen wat iemand zelf met deze crew deelt. Geen
+                gedeelde gegevens betekent dat we ook geen aantallen tonen.
+              </p>
+              <label className="max-w-64">
+                Festivaldag
+                <input
+                  type="date"
+                  value={crewDay}
+                  onChange={(e) => setCrewDay(e.target.value)}
+                />
+              </label>
+              {crewDay && (
+                <Button
+                  variant="ghost"
+                  className="w-fit"
+                  onClick={() => setCrewDay("")}
+                >
+                  Alle dagen
                 </Button>
-              </div>
-              <div className="stat-grid">
-                <div className="card">
-                  <p className="eyebrow">IN DE CREW</p>
-                  <p className="stat-value">
-                    {members.length.toString().padStart(2, "0")}{" "}
-                    <Users size={19} className="inline text-lime-300" />
-                  </p>
-                  <p className="text-xs muted mt-1">leden verbonden</p>
-                </div>
-                <div className="card">
-                  <p className="eyebrow">MIJN LAATSTE</p>
-                  <p className="stat-value">
-                    {myRecords[0] ? elapsed(myRecords[0].taken_at) : "—"}
-                  </p>
-                  <p className="text-xs muted mt-1">verstreken tijd</p>
-                </div>
-                <div className="card">
-                  <p className="eyebrow">MIJN PUNTEN</p>
-                  <p className="stat-value text-lime-300">
-                    {Number(scores.find((s) => s.user_id === uid)?.points || 0)}
-                  </p>
-                  <p className="text-xs muted mt-1">alleen challenges</p>
-                </div>
-              </div>
-              <div className="grid-two">
-                <section className="card">
-                  <div className="section-title">
-                    <h2>Crew updates</h2>
-                    <span className="pill">
-                      <Radio size={12} /> {connected ? "LIVE" : "PRIVÉ"}
-                    </span>
-                  </div>
-                  <p className="muted text-xs mb-2">
-                    Alleen registraties die crewleden expliciet met je delen.
-                  </p>
-                  {loading ? (
-                    <Empty>Updates laden…</Empty>
-                  ) : sharedRecords.length ? (
-                    sharedRecords.slice(0, 12).map((r) => (
-                      <div className="feed-row" key={r.id}>
-                        <button
-                          onClick={() => {
-                            setFriend(r.user_id);
-                            go("friend");
-                          }}
-                          aria-label={`Profiel van ${name(r.user_id)}`}
-                        >
-                          <Avatar name={name(r.user_id)} />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm">
-                            <strong>{name(r.user_id)}</strong>{" "}
-                            <span className="muted">heeft geregistreerd</span>
-                          </p>
-                          <p className="mt-2 font-bold">
-                            {r.substance}{" "}
-                            <span className="muted text-xs font-normal">
-                              {r.quantity}
+              )}
+              <CrewOverview
+                dayLabel={crewDay ? "op deze dag" : "vandaag"}
+                members={members}
+                profiles={profiles}
+                summaries={summaries}
+                uid={uid}
+                open={(id) => {
+                  if (id === uid) {
+                    go("timeline");
+                    return;
+                  }
+                  setFriend(id);
+                  setTimelineDay(crewDay);
+                  setTimelineLabel("");
+                  go("friend");
+                }}
+              />
+              <details className="neutral-stats">
+                <summary>Registratiemomenten naast elkaar</summary>
+                <p className="muted text-xs mt-3 mb-3">
+                  Neutrale aantallen per eigen label. Alfabetisch op naam,
+                  zonder ranglijst, punten of gebruiksadvies.
+                </p>
+                {[...summaries]
+                  .sort((a, b) =>
+                    name(a.user_id).localeCompare(name(b.user_id), "nl"),
+                  )
+                  .map((s) => (
+                    <div className="stats-person" key={s.user_id}>
+                      <strong>{name(s.user_id)}</strong>
+                      <div>
+                        {Object.entries(s.substance_counts).map(
+                          ([label, count]) => (
+                            <span key={label}>
+                              {label} <b>{count}</b>
                             </span>
-                          </p>
-                          {r.notes && (
-                            <p className="text-xs muted mt-2 break-words">
-                              {r.notes}
-                            </p>
-                          )}
-                          <p className="text-xs muted mt-2">
-                            {formatDate(r.taken_at)}
-                          </p>
-                        </div>
-                        <span className="text-xs text-lime-300 whitespace-nowrap">
-                          {elapsed(r.taken_at)} geleden
-                        </span>
+                          ),
+                        )}
                       </div>
-                    ))
-                  ) : (
-                    <Empty>
-                      <Users size={30} className="mx-auto mb-3 text-lime-300" />
-                      Nog even rustig hier.
-                      <br />
-                      Gedeelde registraties van je crew verschijnen hier.
-                    </Empty>
-                  )}
-                  <div className="divider" />
-                  <div className="flex justify-between text-xs muted">
-                    <span>
-                      <Shield size={12} className="inline mr-1" />
-                      Toestemming voorop
-                    </span>
-                    <span>
-                      {lastSync
-                        ? `Bijgewerkt ${new Date(lastSync).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`
-                        : "Geen gegevens geladen"}
-                    </span>
-                  </div>
-                </section>
-                <aside className="stack">
-                  <section className="hero">
-                    <p className="eyebrow !text-[#3f5325]">
-                      SMALL MOMENTS. BIG MEMORIES.
-                    </p>
-                    <h2 className="!text-3xl mt-4 max-w-60">
-                      Verzamel momenten.
-                    </h2>
-                    <p className="text-sm mt-3 max-w-64">
-                      20 challenges. Eén crew. Maak er jullie weekend van.
-                    </p>
-                    <button
-                      onClick={() => go("challenges")}
-                      className="mt-5 text-sm font-bold flex items-center gap-2"
-                    >
-                      Ontdek de challenges <ArrowUpRight size={17} />
-                    </button>
-                  </section>
-                  <section className="card stack">
-                    <div className="section-title !mb-0">
-                      <h3>Even inchecken?</h3>
-                      <Heart size={20} className="text-lime-300" />
                     </div>
-                    <p className="text-sm muted leading-6">
-                      Hoe gaat het met je? Laat het je crew weten als je
-                      gezelschap of hulp wilt.
-                    </p>
-                    <Button variant="secondary" onClick={() => go("checkins")}>
-                      Mijn check-in <ChevronRight size={16} />
-                    </Button>
-                  </section>
-                  <p className="text-xs muted leading-5 px-1">
-                    Tijden zijn uitsluitend historisch en geven geen advies over
-                    veilig (her)gebruik. Direct hulp nodig? Zoek de EHBO of bel
-                    112 bij acuut gevaar.
-                  </p>
-                </aside>
-              </div>
-            </>
+                  ))}
+              </details>
+            </section>
+          )}
+          {tab === "crews" && (
+            <section className="stack">
+              {crews.length > 1 && (
+                <label>
+                  Actieve crew
+                  <select
+                    value={cid}
+                    onChange={(e) =>
+                      void run(async () => {
+                        await rpc("complete_onboarding", {
+                          chosen_crew: e.target.value,
+                        });
+                      }, "Crew gewijzigd.")
+                    }
+                  >
+                    {crews.map((c) => (
+                      <option value={c.id} key={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <CrewChooser
+                inviteToken={pendingInvite}
+                onDone={async () => {
+                  setPendingInvite("");
+                  await loadCrews();
+                  go("live");
+                }}
+              />
+            </section>
           )}
           {(tab === "timeline" || tab === "friend") && (
             <section>
@@ -795,21 +923,60 @@ export function CrewApp() {
               {tab === "friend" && (
                 <div className="flex flex-wrap gap-2 mb-5">
                   {Object.entries(
-                    records
-                      .filter((r) => r.user_id === friend)
-                      .reduce<Record<string, number>>(
-                        (a, r) => ({
-                          ...a,
-                          [r.substance]: (a[r.substance] || 0) + 1,
-                        }),
-                        {},
-                      ),
+                    summaries.find((s) => s.user_id === friend)
+                      ?.substance_counts || {},
                   ).map(([s, n]) => (
                     <span className="pill" key={s}>
-                      {s}: {n} in geladen historie
+                      {s}: {n} registratiemomenten
                     </span>
                   ))}
                 </div>
+              )}
+              <div className="timeline-filters">
+                <label>
+                  Festivaldag
+                  <input
+                    type="date"
+                    value={timelineDay}
+                    onChange={(e) => {
+                      setRecordLimit(100);
+                      setTimelineDay(e.target.value);
+                    }}
+                  />
+                </label>
+                <label>
+                  Middel
+                  <select
+                    value={timelineLabel}
+                    onChange={(e) => {
+                      setRecordLimit(100);
+                      setTimelineLabel(e.target.value);
+                    }}
+                  >
+                    <option value="">Alle middelen</option>
+                    {Object.keys(
+                      summaries.find(
+                        (s) =>
+                          s.user_id === (tab === "timeline" ? uid : friend),
+                      )?.substance_counts || {},
+                    )
+                      .sort()
+                      .map((label) => (
+                        <option key={label}>{label}</option>
+                      ))}
+                  </select>
+                </label>
+              </div>
+              {(timelineDay || timelineLabel) && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setTimelineDay("");
+                    setTimelineLabel("");
+                  }}
+                >
+                  Filters wissen
+                </Button>
               )}
               <div className="card">
                 {(tab === "timeline"
@@ -946,7 +1113,12 @@ export function CrewApp() {
                   <h2>Recente check-ins</h2>
                   {checkins.map((c) => (
                     <div key={c.id} className="feed-row">
-                      <Avatar name={name(c.user_id)} />
+                      <Avatar
+                        name={name(c.user_id)}
+                        path={
+                          profiles.find((p) => p.id === c.user_id)?.avatar_path
+                        }
+                      />
                       <div>
                         <p className="text-sm font-bold">
                           {name(c.user_id)} · {c.status}
@@ -1229,7 +1401,12 @@ export function CrewApp() {
                     >
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <Avatar name={name(s.user_id)} />
+                    <Avatar
+                      name={name(s.user_id)}
+                      path={
+                        profiles.find((p) => p.id === s.user_id)?.avatar_path
+                      }
+                    />
                     <div className="flex-1">
                       <h3>
                         {name(s.user_id)}
@@ -1300,11 +1477,14 @@ export function CrewApp() {
                   Privacy in jouw handen
                 </h2>
                 <p className="text-sm muted leading-6">
-                  Delen geeft alle huidige en toekomstige bevestigde accounts op
-                  Crew Control toegang tot je volledige registratiehistorie op
-                  dit platform, inclusief hoeveelheden en opmerkingen. De
-                  beheerder heeft geen extra toegang. Intrekken blokkeert nieuwe
-                  toegang; eerdere screenshots of bekeken gegevens kun je niet
+                  Delen geeft huidige en toekomstige leden van{" "}
+                  {crew?.name || "deze crew"} toegang tot je volledige historie
+                  binnen deze crew, inclusief hoeveelheden en opmerkingen.{" "}
+                  {cid === communityId
+                    ? "In de gezamenlijke omgeving kan iedereen met een bevestigd account deelnemen. "
+                    : ""}
+                  De beheerder heeft geen extra toegang. Intrekken blokkeert
+                  nieuwe lezingen; eerder bekeken informatie kun je niet
                   terughalen.
                 </p>
                 <label className="flex items-center gap-3">
@@ -1317,7 +1497,7 @@ export function CrewApp() {
                       if (
                         next &&
                         !window.confirm(
-                          "Ik geef expliciet toestemming om mijn volledige registratiehistorie met alle huidige en toekomstige bevestigde accounts op Crew Control te delen, inclusief opmerkingen en hoeveelheden.",
+                          "Ik geef expliciet toestemming om mijn volledige historie in deze crew met alle huidige en toekomstige crewleden te delen, inclusief opmerkingen en hoeveelheden.",
                         )
                       )
                         return;
@@ -1344,34 +1524,20 @@ export function CrewApp() {
                   worden na inzending zichtbaar voor crewleden.
                 </p>
               </div>
-              <form
-                className="card stack"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const f = new FormData(e.currentTarget);
-                  void run(async () => {
-                    await mutate(
-                      "profiles",
-                      { display_name: f.get("name") },
-                      uid,
-                    );
-                  }, "Naam bijgewerkt.");
-                }}
-              >
-                <h2>Je profiel</h2>
-                <label>
-                  Weergavenaam
-                  <input
-                    name="name"
-                    key={uid + name(uid)}
-                    defaultValue={uid ? name(uid) : ""}
-                    minLength={1}
-                    maxLength={60}
-                    required
+              {selfProfile && (
+                <section className="card stack">
+                  <h2>Je profiel</h2>
+                  <ProfileSetup
+                    profile={selfProfile}
+                    editing
+                    onSaved={async () => {
+                      await loadCrews();
+                      await refresh(true);
+                      setNotice("Profiel opgeslagen.");
+                    }}
                   />
-                </label>
-                <Button disabled={busy || !uid}>Naam opslaan</Button>
-              </form>
+                </section>
+              )}
               <form
                 className="card stack"
                 onSubmit={(e) => {
@@ -1499,7 +1665,34 @@ export function CrewApp() {
           )}
           {tab === "admin" && (
             <section className="stack">
-              <h1>Beheer</h1>
+              <h1>Crewbeheer</h1>
+              {admin && (
+                <section className="card stack">
+                  <h2>Vrienden uitnodigen</h2>
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        const token = await rpc("create_invite", { cid });
+                        setInviteLink(`${location.origin}/invite/${token}`);
+                      })
+                    }
+                  >
+                    <Link2 size={18} />
+                    Uitnodigingslink maken
+                  </Button>
+                  {inviteLink && (
+                    <label>
+                      Deel deze link
+                      <input
+                        readOnly
+                        value={inviteLink}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    </label>
+                  )}
+                </section>
+              )}
               {!cid ? (
                 <Empty>Je account wordt klaargezet.</Empty>
               ) : (
@@ -1528,7 +1721,7 @@ export function CrewApp() {
                         }}
                       >
                         <label>
-                          Platformnaam
+                          Crewnaam
                           <input
                             name="name"
                             defaultValue={crew?.name}
@@ -1564,7 +1757,13 @@ export function CrewApp() {
                         className="flex flex-wrap items-center gap-3"
                         key={m.user_id}
                       >
-                        <Avatar name={name(m.user_id)} />
+                        <Avatar
+                          name={name(m.user_id)}
+                          path={
+                            profiles.find((p) => p.id === m.user_id)
+                              ?.avatar_path
+                          }
+                        />
                         <div className="flex-1">
                           <h3 className="text-sm">{name(m.user_id)}</h3>
                           <p className="text-xs muted">
@@ -1628,31 +1827,6 @@ export function CrewApp() {
               )}
             </section>
           )}
-          {tab === "more" && (
-            <section className="stack">
-              <h1>De rest van de crew</h1>
-              <div className="mobile-more">
-                {[
-                  ...nav,
-                  {
-                    id: "settings" as const,
-                    label: "Instellingen",
-                    icon: Settings,
-                  },
-                  { id: "admin" as const, label: "Beheer", icon: Shield },
-                ].map((n) => (
-                  <button
-                    key={n.id}
-                    className="card text-left"
-                    onClick={() => go(n.id)}
-                  >
-                    <n.icon className="text-lime-300 mb-3" size={24} />
-                    <span className="text-sm font-bold">{n.label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
         </div>
         <footer className="flex items-center gap-2 text-[10px] muted mt-9 pt-5 border-t border-[#2b3025]">
           <Shield size={12} /> PRIVÉCREW · JOUW DATA, JOUW KEUZE{" "}
@@ -1660,17 +1834,17 @@ export function CrewApp() {
         </footer>
       </main>
       <nav className="bottom-nav" aria-label="Mobiele navigatie">
-        {[
-          { id: "live" as const, label: "Live", icon: Radio },
-          { id: "timeline" as const, label: "Tijdlijn", icon: Clock },
-          { id: "challenges" as const, label: "Challenges", icon: Flag },
-          { id: "leaderboard" as const, label: "Scores", icon: Trophy },
-          { id: "more" as const, label: "Meer", icon: Menu },
-        ].map((n) => (
+        {nav.map((n) => (
           <button
             key={n.id}
             onClick={() => go(n.id)}
-            className={tab === n.id ? "active" : ""}
+            className={
+              tab === n.id ||
+              (n.id === "challenges" &&
+                ["review", "leaderboard", "wall"].includes(tab))
+                ? "active"
+                : ""
+            }
             aria-current={tab === n.id ? "page" : undefined}
           >
             <n.icon size={21} />
@@ -1678,8 +1852,62 @@ export function CrewApp() {
           </button>
         ))}
       </nav>
+      {profileMenu && (
+        <Modal title="Jouw profiel" close={() => setProfileMenu(false)}>
+          <div className="stack">
+            <div className="flex items-center gap-3">
+              <Avatar
+                name={selfProfile?.display_name || "CC"}
+                path={selfProfile?.avatar_path}
+              />
+              <div>
+                <h3>{selfProfile?.display_name || "Jouw account"}</h3>
+                <p className="muted text-xs">{crew?.name || "Crew Control"}</p>
+              </div>
+            </div>
+            {[
+              {
+                id: "settings" as const,
+                label: "Instellingen & privacy",
+                icon: Settings,
+              },
+              {
+                id: "crews" as const,
+                label: "Mijn crews & uitnodigingen",
+                icon: Users,
+              },
+              { id: "checkins" as const, label: "Check-ins", icon: Heart },
+              ...(admin
+                ? [{ id: "admin" as const, label: "Crewbeheer", icon: Shield }]
+                : []),
+            ].map((item) => (
+              <Button
+                variant="secondary"
+                key={item.id}
+                onClick={() => go(item.id)}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </Button>
+            ))}
+            <Button
+              variant="ghost"
+              disabled={!uid || busy}
+              onClick={() =>
+                void run(async () => {
+                  await getSupabase().auth.signOut();
+                  setProfileMenu(false);
+                })
+              }
+            >
+              <LogOut size={18} />
+              Uitloggen
+            </Button>
+          </div>
+        </Modal>
+      )}
       {recordOpen && (
-        <RecordForm
+        <QuickRecord
           record={editing}
           busy={busy}
           close={() => {
@@ -1702,6 +1930,7 @@ export function CrewApp() {
               }
               saved = true;
               setRecordOpen(false);
+              go("live");
             }, "Registratie opgeslagen.");
             return saved;
           }}
@@ -1842,6 +2071,15 @@ export function CrewApp() {
                       .remove(list.slice(i, i + 100));
                     if (error) throw error;
                   }
+                  const avatarPaths = (await rpc(
+                    "my_avatar_paths",
+                  )) as string[];
+                  if (avatarPaths.length) {
+                    const removed = await client.storage
+                      .from("profile-photos")
+                      .remove(avatarPaths);
+                    if (removed.error) throw removed.error;
+                  }
                   await rpc(
                     confirmation === "account"
                       ? "delete_my_account"
@@ -1870,121 +2108,6 @@ export function CrewApp() {
   );
 }
 
-function RecordForm({
-  record,
-  busy,
-  close,
-  save,
-}: {
-  record: RecordEntry | null;
-  busy: boolean;
-  close: () => void;
-  save: (
-    values: {
-      substance: string;
-      taken_at: string;
-      quantity: string;
-      notes: string;
-    },
-    id: string,
-  ) => Promise<boolean>;
-}) {
-  const [id] = useState(() => crypto.randomUUID());
-  const [error, setError] = useState("");
-  return (
-    <Modal
-      title={record ? "Registratie bewerken" : "Nieuwe registratie"}
-      close={close}
-    >
-      <form
-        className="stack"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          try {
-            const values = recordSchema.parse({
-              substance: f.get("substance"),
-              taken_at: new Date(String(f.get("taken_at"))).toISOString(),
-              quantity: f.get("quantity"),
-              notes: f.get("notes"),
-            });
-            setError("");
-            if (!(await save(values, id)))
-              setError(
-                "Opslaan mislukt. Je invoer is behouden. Controleer je verbinding en probeer opnieuw.",
-              );
-          } catch (e) {
-            setError(errorText(e));
-          }
-        }}
-      >
-        <p className="text-xs muted">
-          Historische registratie, geen gebruiksadvies.{" "}
-          {record
-            ? "Pas je registratie aan."
-            : "Alleen gedeeld als je toestemming hebt ingeschakeld."}
-        </p>
-        <label>
-          Middel
-          <input
-            autoFocus
-            name="substance"
-            maxLength={60}
-            defaultValue={record?.substance}
-            placeholder="Naam van het middel"
-            required
-          />
-        </label>
-        <label>
-          Tijdstip (tijdzone van je apparaat)
-          <input
-            type="datetime-local"
-            name="taken_at"
-            defaultValue={localInput(record?.taken_at)}
-            required
-          />
-        </label>
-        <label>
-          Hoeveelheid (optioneel)
-          <input
-            name="quantity"
-            maxLength={60}
-            defaultValue={record?.quantity}
-            placeholder="Eigen omschrijving"
-          />
-        </label>
-        <label>
-          Opmerking (optioneel)
-          <textarea
-            name="notes"
-            maxLength={1000}
-            defaultValue={record?.notes}
-            rows={3}
-          />
-        </label>
-        {error && (
-          <p className="notice error" role="alert">
-            {error}
-          </p>
-        )}
-        <Button type="submit" disabled={busy}>
-          {busy ? (
-            <>
-              <LoaderCircle size={18} className="animate-spin" />
-              Opslaan…
-            </>
-          ) : (
-            "Registratie opslaan"
-          )}
-        </Button>
-        <p className="text-xs muted">
-          Bij een fout blijft je invoer staan. Sluiten of herladen wist
-          niet-opgeslagen invoer; gevoelige tekst wordt niet lokaal bewaard.
-        </p>
-      </form>
-    </Modal>
-  );
-}
 function UploadForm({
   busy,
   upload,

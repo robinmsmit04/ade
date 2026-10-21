@@ -11,12 +11,12 @@
 
 1. Maak een project aan. Bewaar het databasewachtwoord buiten deze repository.
 2. Koppel de CLI (`supabase login`, `supabase link --project-ref <jouw-ref>`) en voer `supabase db push` uit. Of voer de SQL-bestanden in `supabase/migrations` in volgorde uit in de SQL Editor, als projectbeheerder.
-3. De migraties maken tabellen, constraints, RLS, helper/RPC-functies, een gebruikersprofieltrigger, realtimepublicatie, 20 challengetemplates en de private bucket `crew-evidence` aan. Voer ze niet tweemaal handmatig uit. De CLI houdt migratieversies bij.
-4. Controleer dat alle applicatietabellen RLS gebruiken en `crew-evidence` **private** is. Laat `activity` in `supabase_realtime`; publiceer geen gevoelige registratietabellen.
+3. De migraties maken tabellen, constraints, RLS, helper/RPC-functies, een gebruikersprofieltrigger, realtimepublicatie, 20 challengetemplates en de private buckets `crew-evidence` en `profile-photos` aan. Voer ze niet tweemaal handmatig uit. De CLI houdt migratieversies bij.
+4. Controleer dat alle applicatietabellen RLS gebruiken en beide buckets **private** zijn. Laat `activity` in `supabase_realtime`; publiceer geen gevoelige registratietabellen.
 5. Auth → URL Configuration: stel Site URL in op je productie-URL. Voeg `https://<jouw-domein>/auth/callback` en lokale ontwikkel-URL's toe als toegestane redirects. Voor uitnodigingen na e-mailbevestiging is ook `https://<jouw-domein>/auth/callback?next=/invite/**` nodig (of het ondersteunde globpatroon `https://<jouw-domein>/auth/**`). Sta uitsluitend eigen domeinen toe.
 6. Laat e-mailbevestiging in productie aan. Configureer een eigen SMTP-provider, afzender, afleverbaarheid, rate limits in Supabase. De lokale tests gebruiken uitsluitend auto-confirmatie in een afgeschermde wegwerpomgeving.
 7. Kopieer de publieke URL en publishable key (legacy `anon` mag ook) naar `.env.local`, overeenkomstig `.env.example`. Dit zijn publieke clientinstellingen, **geen service-role key**. Een service-role key is nergens nodig voor de applicatie.
-8. Start `npm run dev`. Registreer twee accounts en bevestig de e-mail. Beide sluiten automatisch aan bij dezelfde omgeving; er is geen crew- of uitnodigingsstap. De gezamenlijke omgeving bevat de twintig challenges.
+8. Start `npm run dev`. Registreer twee accounts en bevestig de e-mail. Nieuwe accounts vullen een naam in, kunnen een foto toevoegen en gaan verder in de gezamenlijke omgeving of kiezen optioneel een privécrew/uitnodiging. Bestaande bevestigde accounts van vóór V2 slaan onboarding over. De gezamenlijke omgeving bevat de twintig challenges.
 
 ## 3. Vercel
 
@@ -89,7 +89,7 @@ Sla externe geheimen uitsluitend op in de instellingen van de betreffende dienst
 
 ## Bestaande installatie omzetten naar één gezamenlijk platform
 
-Open in het bestaande Supabase-project **SQL Editor → New query**. Kopieer het volledige bestand `docs/enable-shared-platform.sql` via GitHub **Copy raw file**, plak het, zorg dat er geen gedeeltelijke selectie actief is en klik **Run**. Verwacht: **Automatisch aansluiten ingesteld**. Dit is alleen de nieuwe derde migratie; voer de volledige oorspronkelijke installatie niet opnieuw uit. Nieuwe installaties gebruiken het bijgewerkte volledige `docs/supabase-setup.sql` of de drie CLI-migraties in volgorde.
+Open in het bestaande Supabase-project **SQL Editor → New query**. Kopieer het volledige bestand `docs/enable-shared-platform.sql` via GitHub **Copy raw file**, plak het, zorg dat er geen gedeeltelijke selectie actief is en klik **Run**. Verwacht: **Automatisch aansluiten ingesteld**. Dit is alleen de nieuwe derde migratie; voer de volledige oorspronkelijke installatie niet opnieuw uit. Nieuwe installaties gebruiken het bijgewerkte volledige `docs/supabase-setup.sql` of de vier CLI-migraties in volgorde.
 
 De update voegt alle bestaande bevestigde accounts toe aan één omgeving, schrijft toekomstige accounts in zodra hun e-mail bevestigd is en herstelt ontbrekende inschrijving bij inloggen. Deeltoestemming staat standaard uit en wordt bij herhaald inloggen niet overschreven. Oude privécrewgegevens blijven op hun oorspronkelijke plek en worden niet automatisch in het gezamenlijke platform getoond. Vercel hoeft geen extra variabele of groeps-ID te krijgen. De GitHub-gekoppelde deployment bouwt de gewijzigde interface; open daarna de gebruikelijke website en log opnieuw in.
 
@@ -103,3 +103,11 @@ where m.user_id=u.id and m.crew_id=s.crew_id
 ```
 
 Voor een lokaal bewijs van de bevestigingsgrens kan de database-eigenaar `supabase/tests/shared-platform.sql` tegen een wegwerpdatabase uitvoeren. De test gebruikt een onbevestigde fixture, toetst onder authenticated-rechten, bevestigt de fixture en controleert gewone memberrechten en uitgeschakelde toestemming. Alle fixturewijzigingen worden teruggedraaid.
+
+## Bestaande installatie bijwerken naar V2
+
+Deze stap veronderstelt dat migraties 001, 002 en 003 al zijn uitgevoerd. Open [docs/enable-mobile-v2.sql](docs/enable-mobile-v2.sql) op GitHub en klik **Copy raw file**. Ga naar het bestaande project op **supabase.com/dashboard → SQL Editor → New query**, plak het volledige bestand, maak eventuele tekstselectie ongedaan en klik **Run**. Verwacht **Crew Control V2 ingesteld**. Voer dit eenmaal uit; het bestand bevat uitsluitend migratie 004 met een transactie. Gebruik hiervoor niet de volledige installatie en herhaal migratie 003 niet.
+
+Dit voegt de private profielfotobucket, profiel-/onboardingvelden, gecontroleerde profielfuncties en RLS-respecterende historische filters/samenvattingen toe. Bestaande bevestigde accounts worden gemarkeerd als voltooid en houden toegang tot de gezamenlijke omgeving. Bestaande registraties, challenges en toestemmingen blijven behouden. Nieuwe accounts kiezen na hun naam en optionele foto hoe ze verdergaan. Foto’s kunnen later via **Mijn profiel → Instellingen & privacy** worden aangepast.
+
+De GitHub-gekoppelde Vercel-build gebruikt dezelfde twee publieke omgevingsvariabelen. Controleer in **Vercel → ade → Deployments** dat de nieuwe main-build **Ready** is. Controleer daarna de gewone productie-URL met twee accounts: Home, naam/foto, snelle registratie, Tijdlijn-filters, delen/intrekken, Crew en de challenge-subnavigatie. De cloudomgeving heeft geen hosted beheerrechten; het uitvoeren van deze SQL en het resultaat van de publieke deployment zijn niet vanuit hier bevestigd.
