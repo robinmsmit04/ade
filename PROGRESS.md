@@ -61,3 +61,8 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 - Hosted migraties, Auth-redirects, Vercel-variabelen en publieke deployment zijn nog niet uitgevoerd: accounttoegang en het bedoelde Supabase-project ontbreken. Geen publieke HTTPS-URL aangemaakt en geen productie-eindtests geclaimd.
 - GitHub Actions API is via deze omgeving niet toegankelijk; een geslaagde CI-run is daarom niet bevestigd. Native Git-toegang werkt wel.
 - De gecorrigeerde productiebuild is opnieuw getest: alle 8 Chromium-browsertests slagen op desktop en mobiel formaat. De wijziging en deze bevindingen worden naar `main` gepusht.
+
+## Handmatige Supabase-installatie
+
+- Gebruiker kreeg syntaxfout op regel 1 bij `token:=...`. Deze regel hoort binnen de `create_invite`-functie en is geen zelfstandig SQL-statement. Een onvolledig geplakt of geselecteerd fragment kan deze fout veroorzaken; hosted database-inhoud is niet geïnspecteerd.
+- De twee bestaande migraties zijn ongewijzigd gebundeld in `docs/supabase-setup.sql`, met één transactie en een resultaatcontrole op 20 templates. Dit bestand staat buiten de migratiemap zodat de CLI het niet nogmaals toepast.
