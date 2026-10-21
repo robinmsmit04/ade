@@ -66,3 +66,9 @@ De applicatie is lokaal functioneel met echte persistente PostgreSQL/Storage, ge
 
 - Gebruiker kreeg syntaxfout op regel 1 bij `token:=...`. Deze regel hoort binnen de `create_invite`-functie en is geen zelfstandig SQL-statement. Een onvolledig geplakt of geselecteerd fragment kan deze fout veroorzaken; hosted database-inhoud is niet geïnspecteerd.
 - De twee bestaande migraties zijn ongewijzigd gebundeld in `docs/supabase-setup.sql`, met één transactie en een resultaatcontrole op 20 templates. Dit bestand staat buiten de migratiemap zodat de CLI het niet nogmaals toepast.
+
+## Bevestigingsmail
+
+- Gebruiker meldt dat hosted registratie, e-mailbevestiging en opnieuw inloggen werken; niet zelfstandig vanuit deze cloudomgeving geverifieerd.
+- Nederlandstalige HTML-template in Crew Control-stijl toegevoegd onder `supabase/templates/confirmation.html`. Supabase `ConfirmationURL` blijft intact; geen externe assets of echte tokens opgenomen.
+- Browserpreview past op 320 en 600 pixels. De projecteigenaar moet de template nog in het hosted Supabase-dashboard opslaan; mailclientweergave en verzending daarna controleren.
