@@ -35,6 +35,7 @@ test("official seven-player lineup, exclusive manager, player privacy and live l
       if (signup.error) throw signup.error;
       ids.push(signup.data.user!.id);
       cid = await ok(cs[i].rpc("ensure_community_membership"));
+      if (i === 7) continue; // Confirmed account, no chosen name/photo/onboarding yet.
       await ok(
         cs[i].rpc("save_my_profile", {
           nickname: `Speler ${i} ${suffix}`,
@@ -94,7 +95,7 @@ test("official seven-player lineup, exclusive manager, player privacy and live l
       ctx.fillRect(35, 65, 30, 5);
       return c.toDataURL("image/png").split(",")[1];
     });
-    for (let i = 1; i < 8; i++) {
+    for (let i = 1; i < 7; i++) {
       const path = `${ids[i]}/${crypto.randomUUID()}.png`;
       await ok(
         cs[i].storage
@@ -117,6 +118,9 @@ test("official seven-player lineup, exclusive manager, player privacy and live l
     await expect(
       viewer.getByRole("button", { name: "Opstelling beheren", exact: true }),
     ).toHaveCount(0);
+    await expect(viewer.locator(".selection-manager-status")).toContainText(
+      `Speler 0 ${suffix}`,
+    );
     await manager
       .getByRole("button", { name: "Opstelling beheren", exact: true })
       .click();
@@ -138,6 +142,38 @@ test("official seven-player lineup, exclusive manager, player privacy and live l
     });
     await expect(pitch.getByRole("button")).toHaveCount(7);
     await expect(pitch.getByRole("button", { disabled: false })).toHaveCount(7);
+    await expect(pitch.locator(".avatar img")).toHaveCount(6);
+    const unfinished = await ok(
+      cs[7]
+        .from("profiles")
+        .select("profile_completed_at,avatar_path,onboarding_completed_at")
+        .eq("id", ids[7])
+        .single(),
+    );
+    expect(unfinished).toEqual({
+      profile_completed_at: null,
+      avatar_path: null,
+      onboarding_completed_at: null,
+    });
+    const lateAvatar = `${ids[7]}/${crypto.randomUUID()}.png`;
+    await ok(
+      cs[7].storage
+        .from("profile-photos")
+        .upload(lateAvatar, Buffer.from(avatar, "base64"), {
+          contentType: "image/png",
+        }),
+    );
+    await ok(
+      cs[7].rpc("save_my_profile", {
+        nickname: `Speler 7 ${suffix}`,
+        photo_path: lateAvatar,
+      }),
+    );
+    await expect(
+      pitch.getByRole("button", {
+        name: new RegExp(`Keeper: Speler 7 ${suffix}`),
+      }),
+    ).toBeVisible();
     await expect(pitch.locator(".avatar img")).toHaveCount(7);
     await expect(pitch.locator(".avatar img").first()).toBeVisible();
     const portrait = await pitch
@@ -149,8 +185,8 @@ test("official seven-player lineup, exclusive manager, player privacy and live l
       .locator(".pitch-player")
       .evaluateAll((nodes) =>
         nodes.map((n) => ({
-          top: n.getBoundingClientRect().top,
-          left: n.getBoundingClientRect().left,
+          top: (n as HTMLElement).offsetTop,
+          left: (n as HTMLElement).offsetLeft,
         })),
       );
     expect(positions[0].top).toBe(positions[1].top);

@@ -72,6 +72,7 @@ type Tab =
   | "leaderboard"
   | "wall"
   | "settings"
+  | "profile"
   | "admin"
   | "friend"
   | "more"
@@ -86,6 +87,7 @@ const tabs: readonly Tab[] = [
   "leaderboard",
   "wall",
   "settings",
+  "profile",
   "admin",
   "friend",
   "more",
@@ -656,7 +658,11 @@ export function CrewApp() {
         </Button>
       </main>
     );
-  if (session && selfProfile && !selfProfile.onboarding_completed_at)
+  if (
+    session &&
+    selfProfile &&
+    (!selfProfile.profile_completed_at || !selfProfile.onboarding_completed_at)
+  )
     return (
       <main className="onboarding-shell">
         <div className="brand">
@@ -882,6 +888,19 @@ export function CrewApp() {
                   <Camera size={25} />
                 </Button>
               </div>
+              {selfProfile && !selfProfile.avatar_path && (
+                <button
+                  className="profile-completion"
+                  onClick={() => go("profile")}
+                >
+                  <Camera size={21} aria-hidden="true" />
+                  <span>
+                    <strong>Nog geen profielfoto</strong>
+                    <small>Voeg een foto toe of pas je naam aan</small>
+                  </span>
+                  <ChevronRight size={18} aria-hidden="true" />
+                </button>
+              )}
               <SelectionHome
                 key={`${cid}:${uid}`}
                 cid={cid}
@@ -1528,6 +1547,25 @@ export function CrewApp() {
               }}
             />
           )}
+          {tab === "profile" && selfProfile && (
+            <section className="stack">
+              <h1>Naam en profielfoto</h1>
+              <p className="muted text-sm">
+                Je kunt dit altijd aanpassen. Je foto verschijnt automatisch in
+                de opstelling zodra je bent geselecteerd.
+              </p>
+              <ProfileSetup
+                key={selfProfile.id}
+                profile={selfProfile}
+                editing
+                onSaved={async () => {
+                  await loadCrews();
+                  await refresh(true);
+                  setNotice("Naam en profielfoto opgeslagen.");
+                }}
+              />
+            </section>
+          )}
           {tab === "settings" && (
             <section className="stack">
               <h1>Jouw instellingen</h1>
@@ -1950,6 +1988,11 @@ export function CrewApp() {
               </div>
             </div>
             {[
+              {
+                id: "profile" as const,
+                label: "Naam en foto aanpassen",
+                icon: Camera,
+              },
               {
                 id: "settings" as const,
                 label: "Instellingen & privacy",

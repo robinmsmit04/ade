@@ -113,6 +113,13 @@ export function SelectionHome({
           </Button>
         )}
       </div>
+      {data && !canManage && !canClaim && (
+        <p className="notice selection-manager-status" role="status">
+          {data.settings.manager_id
+            ? `Opstellingsbeheer: ${teamProfiles.find((p) => p.id === data.settings.manager_id)?.display_name || "het aangewezen account"}. Alleen dat account ziet de beheerknop.`
+            : "Opstellingsbeheer is nog niet toegewezen. De projecteigenaar moet het eigen account eenmalig aanwijzen; daarna verschijnt hier de beheerknop."}
+        </p>
+      )}
       {canClaim && (
         <div className="notice stack">
           <p className="text-sm">

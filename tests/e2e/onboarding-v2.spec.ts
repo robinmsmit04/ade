@@ -145,6 +145,47 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
     expect(savedProfile.data?.avatar_path).toMatch(/\.jpg$/);
     expect(savedProfile.data?.onboarding_completed_at).toBeTruthy();
     await page
+      .getByRole("button", { name: "Mijn profiel", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Naam en foto aanpassen", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Naam en profielfoto", exact: true }),
+    ).toBeVisible();
+    const updatedName = `Nieuwe naam ${crypto.randomUUID().slice(0, 5)}`;
+    await page.getByLabel("Voornaam of bijnaam").fill(updatedName);
+    await page.getByLabel("Profielfoto uploaden").setInputFiles({
+      name: "nieuwe-foto.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(png, "base64"),
+    });
+    await page
+      .getByRole("button", { name: "Profiel opslaan", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText(
+      "Naam en profielfoto opgeslagen.",
+    );
+    await nav.getByRole("button", { name: "Home", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: `Hey, ${updatedName}.`, exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: `Hey, ${updatedName}.`, exact: true }),
+    ).toBeVisible();
+    const updatedProfile = await c
+      .from("profiles")
+      .select("display_name,avatar_path")
+      .eq("id", uid)
+      .single();
+    expect(updatedProfile.data?.display_name).toBe(updatedName);
+    expect(updatedProfile.data?.avatar_path).not.toBe(
+      savedProfile.data?.avatar_path,
+    );
+
+    await page
       .getByRole("button", { name: "Feest afronden", exact: true })
       .click();
     await page
@@ -229,6 +270,9 @@ test("accounts including old invite links go directly to the same shared group",
       await page.getByLabel("Wachtwoord", { exact: true }).fill(password);
       await page.getByRole("button", { name: "Inloggen", exact: true }).click();
       await profile(page, `Vriend ${i}`);
+      await expect(
+        page.getByRole("button", { name: /Nog geen profielfoto/ }),
+      ).toBeVisible();
       await expect(
         page.getByRole("heading", { name: `Hey, Vriend ${i}.`, exact: true }),
       ).toBeVisible();

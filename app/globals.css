@@ -2178,3 +2178,37 @@ button:focus-visible,
     transition: none;
   }
 }
+
+.profile-completion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px dashed #536440;
+  border-radius: 16px;
+  background: #202c18;
+  color: #dbe9ca;
+}
+.profile-completion > span {
+  flex: 1;
+  min-width: 0;
+}
+.profile-completion strong {
+  display: block;
+  font-size: 13px;
+}
+.profile-completion small {
+  display: block;
+  color: #a9bb96;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.selection-manager-status {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}

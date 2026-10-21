@@ -34,14 +34,12 @@ export function LineupEditor({
       const previous = rows.find(
         (p) => p.user_id === userId && userId && p.position !== position,
       );
-      const selected = profiles.find((p) => p.id === userId);
       return rows.map((p) =>
         p.position === position
           ? {
               ...p,
               user_id: userId || null,
-              player_name:
-                previous?.player_name || selected?.display_name || "",
+              player_name: previous?.player_name || "",
               nickname: previous?.nickname || "",
             }
           : p === previous
@@ -84,7 +82,18 @@ export function LineupEditor({
       <p className="muted text-sm">
         Zeven plekken, één tactisch meesterplan. Koppel accounts aan posities;
         hun eigen profielfoto verschijnt op het veld. Een bezette speler kiezen
-        wisselt beide spelers om.
+        wisselt beide spelers om. Een afgerond profiel of foto is niet nodig.
+        Laat de spelersnaam leeg om steeds de actuele profielnaam te gebruiken.
+      </p>
+      {!profiles.length && (
+        <p className="notice" role="status">
+          Er zijn nog geen bevestigde teamaccounts beschikbaar. Laat je vrienden
+          hun e-mail bevestigen en log daarna opnieuw in of herlaad de pagina.
+          Een foto of afgerond profiel is niet vereist.
+        </p>
+      )}
+      <p className="muted text-xs">
+        {profiles.length} bevestigde teamaccounts beschikbaar
       </p>
       {POSITIONS.map((position) => {
         const p = draft.find((p) => p.position === position.id)!;
@@ -106,6 +115,11 @@ export function LineupEditor({
                 {profiles.map((profile) => (
                   <option value={profile.id} key={profile.id}>
                     {profile.display_name}
+                    {!profile.profile_completed_at
+                      ? " · profiel nog invullen"
+                      : !profile.avatar_path
+                        ? " · nog geen foto"
+                        : ""}
                   </option>
                 ))}
               </select>
@@ -116,6 +130,10 @@ export function LineupEditor({
                 <input
                   maxLength={60}
                   value={p.player_name}
+                  placeholder={
+                    profiles.find((profile) => profile.id === p.user_id)
+                      ?.display_name || "Actuele profielnaam"
+                  }
                   disabled={!p.user_id}
                   onChange={(e) =>
                     change(position.id, { player_name: e.target.value })

@@ -8,6 +8,9 @@ De interactieve **3-0-3-opstelling met keeper** staat op Home: zeven accountgeko
 
 **Bestaande installatie:** voer eenmalig [docs/enable-ade-selection.sql](docs/enable-ade-selection.sql) uit na migraties 001 t/m 006. Lees [ADE Selectie installeren](docs/ADE-SELECTIE.md) voor jouw exclusieve beheerrechten, de spelers koppelen en controle vóór delen.
 
+Ontbreekt **Opstelling beheren**? Volg de [herstelstappen](docs/ADE-SELECTIE.md#geen-beheerknop-en-nieuwe-accounts-zonder-naamfoto) en het [dashboardherstelbestand](docs/herstel-opstellingsbeheer.sql). Vrienden kunnen naam en foto later aanpassen via **Mijn profiel → Naam en foto aanpassen**. Een bevestigd account is ook zonder afgerond profiel of foto selecteerbaar.
+
+
 ## Starten
 
 Node.js 22 of hoger (in deze omgeving: Node 24), npm en een Supabase-project met de migraties uit `supabase/migrations`.
