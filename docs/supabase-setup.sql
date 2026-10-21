@@ -620,7 +620,8 @@ language plpgsql security definer set search_path='' as $$declare manager uuid;b
  if not found or not public.is_member(cid) or manager is distinct from auth.uid() then raise exception 'Alleen de opstellingsbeheerder kan namens Lucas publiceren';end if;
  if exists(select 1 from public.match_reports where id=request_id and crew_id<>cid) then raise exception 'Ongeldig verslag';end if;
  insert into public.match_reports(id,crew_id,author_id,title,body) values(request_id,cid,auth.uid(),trim(heading),trim(report_body))
- on conflict(id) do update set title=excluded.title,body=excluded.body,updated_at=now();
+ on conflict(id) do update set title=excluded.title,body=excluded.body,updated_at=now() where match_reports.crew_id=excluded.crew_id;
+ if not found then raise exception 'Ongeldig verslag';end if;
  return request_id;
 end$$;
 create function public.delete_match_report(report_id uuid) returns void

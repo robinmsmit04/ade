@@ -271,6 +271,29 @@ describe.sequential(
         expect((await u.rpc("save_match_report", args)).error).toBeTruthy();
       await ok(a.rpc("save_match_report", args));
       await ok(a.rpc("save_match_report", args));
+      const otherCrew = await ok(
+        a.rpc("create_crew", { crew_name: "Report isolation fixture" }),
+      );
+      await ok(
+        a.rpc("set_selection_manager", {
+          cid: otherCrew,
+          manager_user_id: ids[0],
+        }),
+      );
+      expect(
+        (
+          await a.rpc("save_match_report", {
+            ...args,
+            cid: otherCrew,
+            heading: "Cross-team overwrite",
+          })
+        ).error,
+      ).toBeTruthy();
+      expect(
+        (await ok(
+          a.from("match_reports").select("title").eq("id", report).single(),
+        ))!.title,
+      ).toBe(args.heading);
       expect(
         await ok(b.from("match_reports").select("*").eq("id", report)),
       ).toHaveLength(1);
