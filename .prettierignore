@@ -1,0 +1,8 @@
+node_modules
+.next
+.local-stack
+package-lock.json
+playwright-report
+test-results
+supabase/.temp
+public/*.png

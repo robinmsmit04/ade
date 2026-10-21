@@ -1,0 +1,35 @@
+name: Validate Crew Control
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm run lint && npm test
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
+      - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - run: node scripts/configure-cli-tests.mjs
+      - run: node scripts/with-local-env.mjs npm run test:integration
+      - run: node scripts/with-local-env.mjs npm run build
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node scripts/with-local-env.mjs npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failure
+          path: test-results/
+          retention-days: 3
+      - run: supabase stop
+        if: always()
