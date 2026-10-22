@@ -1,3 +1,4 @@
+-- LET OP: alleen registraties wissen? Gebruik docs/reset-registraties.sql; dit bestand verwijdert meer.
 -- Crew Control: alle gebruiks-/testgegevens wissen, accounts en inrichting behouden.
 -- Eenmalig als projecteigenaar uitvoeren vóór je vrienden de app gebruiken.
 -- BLIJFT: Auth-accounts, profielen/profielfoto's, crews, leden/rollen, challenges,

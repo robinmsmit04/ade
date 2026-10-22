@@ -1,5 +1,7 @@
 # Leeg starten met vrienden, accounts behouden
 
+**Alleen registraties leegmaken en al het andere behouden?** Gebruik [reset-registraties.sql](reset-registraties.sql). Het bredere opschoonbestand hieronder is daarvoor niet bedoeld.
+
 Dit is een bewuste opschoning van de gebruiksgegevens van **alle bestaande crews** in dit ADE Selectie-project. De accounts blijven bestaan, inclusief profielnaam, profielfoto en inloggegevens. Crewleden, beheerdersrollen, challenges en alle beveiligingsregels blijven behouden. Registraties, check-ins, challengefoto’s/video’s, reacties, stemmen, punten, meldingen, feeststatus en oude uitnodigingen verdwijnen. Delen wordt voor iedereen teruggezet naar privé.
 
 De cloudagent heeft geen hosted Supabase-/Vercel-beheerverbinding. Onderstaande hosted handelingen zijn daarom nog niet uitgevoerd.

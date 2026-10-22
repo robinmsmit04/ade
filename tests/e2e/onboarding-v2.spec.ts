@@ -78,6 +78,8 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
     expect(rect!.y + rect!.height).toBeLessThan(
       page.viewportSize()!.height - 65,
     );
+    // Open the sticky action from below the field; saving must reveal the top timer.
+    await page.locator(".selection-coach").scrollIntoViewIfNeeded();
     await primary.click();
     await page.getByRole("dialog").getByRole("button", { name: /SOS/ }).click();
     await page
@@ -88,6 +90,15 @@ test("new account uploads an avatar, completes onboarding, registers in two taps
       page.locator(".last-registration").getByText("SOS", { exact: true }),
     ).toBeVisible();
     await expect(page.locator(".elapsed-big")).toContainText(/^[01] min/);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    const timerBox = await page.locator(".last-registration").boundingBox();
+    const fieldBox = await page.locator(".selection-home").boundingBox();
+    expect(timerBox!.y).toBeGreaterThanOrEqual(0);
+    expect(timerBox!.y + timerBox!.height).toBeLessThan(
+      page.viewportSize()!.height - 65,
+    );
+    expect(timerBox!.y + timerBox!.height).toBeLessThan(fieldBox!.y);
+
     const nav = page.getByRole("navigation", {
       name:
         page.viewportSize()!.width < 700

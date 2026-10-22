@@ -2212,3 +2212,24 @@ button:focus-visible,
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
+
+/* Keep elapsed time and quick entry together above the lineup on Home. */
+.home-screen > .last-registration {
+  padding: 16px 20px;
+}
+.home-screen > .last-registration .elapsed-big {
+  font-size: clamp(36px, 10vw, 48px);
+  margin: 10px 0;
+}
+.home-screen > .last-registration h2 {
+  font-size: 21px;
+  margin: 12px 0 8px;
+}
+.home-screen > .last-registration .historical-note {
+  margin-top: 8px;
+  font-size: 9px;
+}
+.home-screen > .last-registration .last-record-detail {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}

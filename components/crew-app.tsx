@@ -860,6 +860,43 @@ export function CrewApp() {
                   {connected ? "Live" : "Verbinden"}
                 </span>
               </header>
+              <div className="last-registration">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="eyebrow">JOUW LAATSTE REGISTRATIE</span>
+                  <Clock size={17} className="muted" />
+                </div>
+                {partyEnded ? (
+                  <div className="party-ended">
+                    <Flag size={28} />
+                    <h2>Feest afgerond.</h2>
+                    <p className="muted text-sm">
+                      Afgesloten op {formatDate(partyEnded)}. Je historie staat
+                      in Tijdlijn.
+                    </p>
+                  </div>
+                ) : lastPersonal ? (
+                  <>
+                    <div className="elapsed-big">
+                      {elapsed(lastPersonal.last_taken_at)}
+                      <small>geleden</small>
+                    </div>
+                    <div className="last-record-detail">
+                      <strong>{lastPersonal.last_substance}</strong>
+                      <span>{formatDate(lastPersonal.last_taken_at)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>Nog niets vastgelegd.</h2>
+                    <p className="muted text-sm">
+                      Je eerste registratie verschijnt hier.
+                    </p>
+                  </>
+                )}
+                <p className="historical-note">
+                  Historische informatie · geen advies over (her)gebruik
+                </p>
+              </div>
               <div className="home-primary-actions">
                 <Button
                   className="home-register"
@@ -910,43 +947,6 @@ export function CrewApp() {
                 profiles={profiles}
                 members={members}
               />
-              <div className="last-registration">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="eyebrow">JOUW LAATSTE REGISTRATIE</span>
-                  <Clock size={17} className="muted" />
-                </div>
-                {partyEnded ? (
-                  <div className="party-ended">
-                    <Flag size={28} />
-                    <h2>Feest afgerond.</h2>
-                    <p className="muted text-sm">
-                      Afgesloten op {formatDate(partyEnded)}. Je historie staat
-                      in Tijdlijn.
-                    </p>
-                  </div>
-                ) : lastPersonal ? (
-                  <>
-                    <div className="elapsed-big">
-                      {elapsed(lastPersonal.last_taken_at)}
-                      <small>geleden</small>
-                    </div>
-                    <div className="last-record-detail">
-                      <strong>{lastPersonal.last_substance}</strong>
-                      <span>{formatDate(lastPersonal.last_taken_at)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h2>Nog niets vastgelegd.</h2>
-                    <p className="muted text-sm">
-                      Je eerste registratie verschijnt hier.
-                    </p>
-                  </>
-                )}
-                <p className="historical-note">
-                  Historische informatie · geen advies over (her)gebruik
-                </p>
-              </div>
               {!partyEnded && uid && (
                 <button
                   className="party-end-action"
@@ -2065,6 +2065,10 @@ export function CrewApp() {
               setRecordOpen(false);
               go("live");
             }, "Registratie opgeslagen.");
+            if (saved)
+              requestAnimationFrame(() =>
+                window.scrollTo({ top: 0, behavior: "instant" }),
+              );
             return saved;
           }}
         />

@@ -85,3 +85,11 @@ Zonder Supabase-toegang kan de assistent deze productie-instellingen niet zelf u
 ## Nieuwe officiële challengelijst
 
 De 13 ADE-challenges staan in [enable-ade-challenges.sql](https://github.com/robinmsmit04/ade/blob/main/docs/enable-ade-challenges.sql). Voer het hele bestand uit in **Supabase → SQL Editor → New query → Run**, zonder iets te vervangen. Het voegt de nieuwe actieve lijst toe en archiveert de oude opdrachten in de gezamenlijke groep. Historische inzendingen, beoordelingen en verdiende punten blijven behouden. Verdeling: zeven Makkelijk van 10 punten, drie Medium van 30 punten en drie Bijna onmogelijk van 100 punten. Succesmelding: **13 ADE-challenges ingesteld**. Ververs de app na de nieuwste Vercel-deployment.
+
+## Alleen middelregistraties opschonen
+
+Open [reset-registraties.sql](https://github.com/robinmsmit04/ade/blob/main/docs/reset-registraties.sql) → **Copy raw file**. Ga naar **Supabase → SQL Editor → New query**, plak het hele bestand en klik **Run** zonder tekstselectie. Je hoeft geen UUID of credential in te vullen en geen Storage-bestanden te verwijderen. Verwacht **Registraties verwijderd; overige gegevens behouden** en nul resterende registraties. Herlaad daarna Home en Tijdlijn.
+
+Dit verwijdert alle middelregistraties in alle groepen. Accounts, namen, profielfoto's, opstelling, bijnamen, rugnummers, beheerrechten, challenges, inzendingen/foto's, reviews, punten, verslagen, check-ins, feeststatus en deeltoestemmingen blijven behouden. Gebruik hiervoor niet het oudere `reset-test-data.sql`: dat verwijdert ook andere gebruiksgegevens. Het script bestaat uit één atomair blok en kan veilig opnieuw worden uitgevoerd; nieuwe registraties blijven daarna mogelijk. Het script wordt alleen door de projecteigenaar in de SQL Editor uitgevoerd, niet automatisch bij een deployment.
+
+De persoonlijke timer staat op Home boven de opstelling, direct na de begroeting. Na het opslaan van een registratie keert Home terug naar boven, zodat de nieuwe teller direct zichtbaar is. De snelle registratie- en cameraknoppen blijven tijdens scrollen bereikbaar.

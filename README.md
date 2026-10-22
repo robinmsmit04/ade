@@ -64,3 +64,5 @@ npm run test:e2e         # vereist geïnstalleerde Playwright-browsers
 [ARCHITECTURE.md](ARCHITECTURE.md) beschrijft de beveiliging en [TESTING.md](TESTING.md) de werkelijk uitgevoerde controles. [PROGRESS.md](PROGRESS.md) houdt voortgang en externe vervolgstappen bij. Productiepublicatie vereist een eigen Supabase-project en Vercel-account; de lokale teststack is geen productieomgeving.
 
 Voor de nieuwe officiële challengelijst in een bestaande database: voer het hele bestand [docs/enable-ade-challenges.sql](docs/enable-ade-challenges.sql) uit in Supabase SQL Editor. Geen UUID of credentials invullen. Oude challenges worden gearchiveerd; bestaande inzendingen en punten blijven bewaard. De upgrade is herhaalbaar en raakt bestaande privécrews niet.
+
+Alleen testregistraties opruimen, met behoud van alle andere informatie? Gebruik [docs/reset-registraties.sql](docs/reset-registraties.sql) in Supabase SQL Editor. De timer staat bovenaan Home, vóór de opstelling; na registratie opent Home bovenaan.
